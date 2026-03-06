@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: pickup-sports
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+
+app:
+  base-url: ${APP_BASE_URL:http://localhost:3000}
+  # JWT_SECRET has no default — must be set in all environments; app will not start without it
+  jwt-secret: ${JWT_SECRET}
+  resend-api-key: ${RESEND_API_KEY:}
+
+# Sentry — dependency and full config added in Epic 9; placeholder wired now
+sentry:
+  dsn: ${SENTRY_DSN:}
+
+# DB config added in Story 1.3 (database-setup)
+# spring.datasource and spring.jpa added when Flyway + JPA are introduced
+# DB_URL, DB_USERNAME, DB_PASSWORD wired in Story 1.3

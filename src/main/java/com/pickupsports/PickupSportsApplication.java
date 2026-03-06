@@ -1,13 +1,13 @@
-package com.sportsplatform.api;
+package com.pickupsports;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PickupSportsApiApplication {
+public class PickupSportsApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PickupSportsApiApplication.class, args);
+        SpringApplication.run(PickupSportsApplication.class, args);
     }
 
 }

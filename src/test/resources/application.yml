@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: pickup-sports
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: 8080
+
+app:
+  base-url: http://localhost:3000
+  jwt-secret: test-secret-for-unit-tests
+  resend-api-key: ""
