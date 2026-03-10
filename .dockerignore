@@ -1,0 +1,8 @@
+build/
+.gradle/
+*.md
+*.iml
+HELP.md
+.git/
+.gitignore
+src/test/
