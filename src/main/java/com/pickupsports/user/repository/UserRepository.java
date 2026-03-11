@@ -16,6 +16,21 @@ public class UserRepository {
         this.jdbc = jdbc;
     }
 
+    public Optional<User> findById(UUID id) {
+        var rows = jdbc.query(
+            "SELECT id, email, name, bio, created_at FROM users WHERE id = ?",
+            (rs, i) -> new User(
+                rs.getObject("id", UUID.class),
+                rs.getString("email"),
+                rs.getString("name"),
+                rs.getString("bio"),
+                rs.getTimestamp("created_at").toInstant()
+            ),
+            id
+        );
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
     public Optional<User> findByEmail(String email) {
         var rows = jdbc.query(
             "SELECT id, email, name, bio, created_at FROM users WHERE email = ?",

@@ -1,9 +1,12 @@
 package com.pickupsports.auth.service;
 
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -34,5 +37,19 @@ public class JwtService {
             .expiration(Date.from(now.plus(30, ChronoUnit.DAYS)))
             .signWith(key)   // HS256 inferred from 32-byte key
             .compact();
+    }
+
+    public UUID parseUserId(String jwt) {
+        try {
+            String subject = Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(jwt)
+                .getPayload()
+                .getSubject();
+            return UUID.fromString(subject);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token");
+        }
     }
 }

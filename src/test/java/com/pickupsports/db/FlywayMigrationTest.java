@@ -82,7 +82,10 @@ class FlywayMigrationTest {
         "idx_sessions_status",
         "idx_sessions_host_user_id",
         "idx_session_participants_session_id",
-        "idx_session_participants_user_id"
+        // V5: idx_session_participants_user_id replaced by partial unique index
+        "uq_session_participants_user",
+        "uq_session_participants_guest_token",
+        "idx_session_participants_guest_token"
     })
     void indexExists(String indexName) {
         Integer count = jdbcTemplate.queryForObject(
