@@ -29,6 +29,17 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    // JWT (JJWT 0.12.x)
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
+    // Rate limiting
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+
+    // Email
+    implementation("com.resend:resend-java:4.12.0")
+
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
