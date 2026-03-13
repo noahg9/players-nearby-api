@@ -1,8 +1,10 @@
 package com.pickupsports.user.repository;
 
 import com.pickupsports.user.domain.User;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -52,5 +54,14 @@ public class UserRepository {
             user.id(), user.email(), user.name()
         );
         return user;
+    }
+
+    public User update(UUID id, String name, String bio) {
+        jdbc.update(
+            "UPDATE users SET name = COALESCE(?, name), bio = COALESCE(?, bio) WHERE id = ?",
+            name, bio, id
+        );
+        return findById(id).orElseThrow(
+            () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }
