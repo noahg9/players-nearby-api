@@ -8,6 +8,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+
 @Service
 public class EmailService {
 
@@ -52,5 +56,42 @@ public class EmailService {
             // Do NOT re-throw — caller returns 200 OK regardless.
             // Prevents email enumeration attacks and avoids user-visible errors for transient email failures.
         }
+    }
+
+    public void sendCancellationNotification(String toEmail, String sessionTitle,
+                                             Instant startTime, String locationName) {
+        if (!emailEnabled) {
+            log.debug("Resend API key not configured — cancellation notification not sent to {}", toEmail);
+            return;
+        }
+
+        String formattedTime = DateTimeFormatter.ofPattern("EEE, MMM d yyyy 'at' HH:mm 'UTC'")
+            .withZone(ZoneOffset.UTC)
+            .format(startTime);
+
+        try {
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(FROM_ADDRESS)
+                .to(toEmail)
+                .subject("Session cancelled: " + escapeHtml(sessionTitle))
+                .html("<p>The following session has been cancelled by the host:</p>"
+                    + "<p><strong>" + escapeHtml(sessionTitle) + "</strong><br>"
+                    + escapeHtml(locationName) + "<br>"
+                    + formattedTime + "</p>"
+                    + "<p>We hope to see you at another session soon!</p>")
+                .build();
+            resend.emails().send(params);
+        } catch (ResendException e) {
+            log.error("Failed to send cancellation notification to {}: {}", toEmail, e.getMessage());
+            // Do NOT re-throw — cancellation should succeed even if email delivery fails
+        }
+    }
+
+    private static String escapeHtml(String text) {
+        if (text == null) return "";
+        return text.replace("&", "&amp;")
+                   .replace("<", "&lt;")
+                   .replace(">", "&gt;")
+                   .replace("\"", "&quot;");
     }
 }

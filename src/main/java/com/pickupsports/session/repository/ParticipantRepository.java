@@ -108,4 +108,19 @@ public class ParticipantRepository {
     public void delete(UUID id) {
         jdbc.update("DELETE FROM session_participants WHERE id = ?", id);
     }
+
+    public List<String> findRegisteredParticipantEmails(UUID sessionId) {
+        return jdbc.queryForList(
+            """
+            SELECT u.email
+            FROM session_participants sp
+            JOIN users u ON sp.user_id = u.id
+            WHERE sp.session_id = ?
+              AND sp.user_id IS NOT NULL
+              AND sp.status IN ('joined', 'waitlist')
+            """,
+            String.class,
+            sessionId
+        );
+    }
 }
