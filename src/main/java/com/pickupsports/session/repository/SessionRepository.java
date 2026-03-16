@@ -170,4 +170,69 @@ public class SessionRepository {
         Long count = jdbc.queryForObject(sql.toString(), Long.class, params.toArray());
         return count != null ? count : 0L;
     }
+
+    public List<SessionSummary> findByUserId(UUID userId, String role, String status, int page, int size) {
+        var sql = new StringBuilder("""
+            SELECT s.id, s.sport, s.title, s.location_name,
+                   ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
+                   s.start_time, s.end_time, s.capacity, s.status,
+                   COUNT(sp2.id) FILTER (WHERE sp2.status = 'joined') AS participant_count
+            FROM sessions s
+            JOIN session_participants my_sp ON my_sp.session_id = s.id
+                AND my_sp.user_id = ?
+                AND my_sp.status IN ('joined', 'waitlist')
+            LEFT JOIN session_participants sp2 ON sp2.session_id = s.id
+            WHERE 1=1
+            """);
+        var params = new ArrayList<>();
+        params.add(userId);
+
+        if ("hosting".equals(role)) {
+            sql.append("  AND s.host_user_id = ?\n");
+            params.add(userId);
+        } else if ("joined".equals(role)) {
+            sql.append("  AND s.host_user_id != ?\n");
+            params.add(userId);
+        }
+
+        if (!"all".equals(status)) {
+            sql.append("  AND s.status = ?\n");
+            params.add(status);
+        }
+
+        sql.append("GROUP BY s.id\nORDER BY s.start_time ASC\nLIMIT ? OFFSET ?");
+        params.add(size);
+        params.add((long) page * size);
+
+        return jdbc.query(sql.toString(), SUMMARY_MAPPER, params.toArray());
+    }
+
+    public long countByUserId(UUID userId, String role, String status) {
+        var sql = new StringBuilder("""
+            SELECT COUNT(DISTINCT s.id)
+            FROM sessions s
+            JOIN session_participants my_sp ON my_sp.session_id = s.id
+                AND my_sp.user_id = ?
+                AND my_sp.status IN ('joined', 'waitlist')
+            WHERE 1=1
+            """);
+        var params = new ArrayList<>();
+        params.add(userId);
+
+        if ("hosting".equals(role)) {
+            sql.append("  AND s.host_user_id = ?\n");
+            params.add(userId);
+        } else if ("joined".equals(role)) {
+            sql.append("  AND s.host_user_id != ?\n");
+            params.add(userId);
+        }
+
+        if (!"all".equals(status)) {
+            sql.append("  AND s.status = ?\n");
+            params.add(status);
+        }
+
+        Long count = jdbc.queryForObject(sql.toString(), Long.class, params.toArray());
+        return count != null ? count : 0L;
+    }
 }

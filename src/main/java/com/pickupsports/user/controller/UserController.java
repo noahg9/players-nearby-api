@@ -1,6 +1,8 @@
 package com.pickupsports.user.controller;
 
 import com.pickupsports.auth.service.JwtService;
+import com.pickupsports.session.domain.SessionSummary;
+import com.pickupsports.session.repository.SessionRepository;
 import com.pickupsports.user.domain.UserSportProfile;
 import com.pickupsports.user.service.UserService;
 import com.pickupsports.user.service.UserService.UserWithSports;
@@ -21,10 +23,12 @@ public class UserController {
 
     private final UserService userService;
     private final JwtService jwtService;
+    private final SessionRepository sessionRepository;
 
-    public UserController(UserService userService, JwtService jwtService) {
+    public UserController(UserService userService, JwtService jwtService, SessionRepository sessionRepository) {
         this.userService = userService;
         this.jwtService = jwtService;
+        this.sessionRepository = sessionRepository;
     }
 
     // ── Request / Response records ───────────────────────────────────────────
@@ -43,6 +47,19 @@ public class UserController {
 
     record PublicUserResponse(String id, String name, String bio,
                               List<SportProfileResponse> sportProfiles) {}
+
+    record LocationResponse(double lat, double lng) {}
+
+    record MySessionSummaryResponse(
+        String id, String sport, String title, String locationName,
+        LocationResponse location, String startTime, String endTime,
+        int capacity, int participantCount, int spotsLeft, String status
+    ) {}
+
+    record MySessionsResponse(
+        List<MySessionSummaryResponse> content,
+        int page, int size, long total
+    ) {}
 
     // ── Endpoints ────────────────────────────────────────────────────────────
 
@@ -71,6 +88,46 @@ public class UserController {
         UUID userId = requireAuth(authHeader);
         UserSportProfile profile = userService.upsertSportProfile(userId, sport, request.skillLevel());
         return ResponseEntity.ok(new SportProfileResponse(profile.sport(), profile.skillLevel()));
+    }
+
+    @GetMapping("/me/sessions")
+    public ResponseEntity<MySessionsResponse> getMySessions(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(defaultValue = "all") String role,
+            @RequestParam(defaultValue = "active") String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        UUID userId = requireAuth(authHeader);
+
+        if (!List.of("all", "hosting", "joined").contains(role)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "role must be 'all', 'hosting', or 'joined'");
+        }
+        if (!List.of("all", "active", "completed", "cancelled").contains(status)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "status must be 'all', 'active', 'completed', or 'cancelled'");
+        }
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 0");
+        }
+        if (size < 1 || size > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and 100");
+        }
+
+        List<SessionSummary> sessions = sessionRepository.findByUserId(userId, role, status, page, size);
+        long total = sessionRepository.countByUserId(userId, role, status);
+
+        List<MySessionSummaryResponse> content = sessions.stream()
+            .map(s -> new MySessionSummaryResponse(
+                s.id().toString(), s.sport(), s.title(), s.locationName(),
+                new LocationResponse(s.lat(), s.lng()),
+                s.startTime().toString(), s.endTime().toString(),
+                s.capacity(), s.participantCount(), s.spotsLeft(), s.status()
+            ))
+            .toList();
+
+        return ResponseEntity.ok(new MySessionsResponse(content, page, size, total));
     }
 
     @GetMapping("/{id}")
