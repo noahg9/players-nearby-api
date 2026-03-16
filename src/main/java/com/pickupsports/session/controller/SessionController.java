@@ -96,6 +96,8 @@ public class SessionController {
         List<ParticipantResponse> participants
     ) {}
 
+    record JoinResponse(String status) {}
+
     record GuestJoinResponse(String status, String guestToken) {}
 
     record SessionSummaryResponse(
@@ -209,6 +211,16 @@ public class SessionController {
     @GetMapping("/{id}")
     public ResponseEntity<SessionDetailResponse> getSession(@PathVariable UUID id) {
         return ResponseEntity.ok(buildDetailResponse(id));
+    }
+
+    @PostMapping("/{id}/join")
+    public ResponseEntity<JoinResponse> joinSession(
+            @PathVariable UUID id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        UUID userId = requireAuth(authHeader);
+        var result = participantService.join(id, userId);
+        return ResponseEntity.ok(new JoinResponse(result.status()));
     }
 
     @PostMapping("/{id}/guest-join")

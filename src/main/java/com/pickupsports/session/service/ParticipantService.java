@@ -24,7 +24,36 @@ public class ParticipantService {
         this.participantRepository = participantRepository;
     }
 
+    public record JoinResult(String status) {}
+
     public record GuestJoinResult(String status, String guestToken) {}
+
+    @Transactional
+    public JoinResult join(UUID sessionId, UUID userId) {
+        Session session = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+
+        validateOpenForJoining(session);
+
+        participantRepository.findBySessionIdAndUserId(sessionId, userId)
+            .ifPresent(p -> {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "You are already a participant of this session");
+            });
+
+        int joinedCount = participantRepository.countJoined(sessionId);
+        String status = joinedCount < session.capacity() ? "joined" : "waitlist";
+
+        Participant participant = new Participant(
+            UUID.randomUUID(), sessionId, userId,
+            null, null,
+            status, Instant.now(),
+            null
+        );
+        participantRepository.save(participant);
+
+        return new JoinResult(status);
+    }
 
     @Transactional
     public GuestJoinResult guestJoin(UUID sessionId, String guestName) {
