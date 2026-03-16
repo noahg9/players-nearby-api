@@ -1,12 +1,15 @@
 package com.pickupsports.session.repository;
 
 import com.pickupsports.session.domain.Session;
+import com.pickupsports.session.domain.SessionSummary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +33,20 @@ public class SessionRepository {
         rs.getDouble("lat"),
         rs.getDouble("lng"),
         rs.getTimestamp("created_at").toInstant()
+    );
+
+    private static final RowMapper<SessionSummary> SUMMARY_MAPPER = (rs, i) -> new SessionSummary(
+        rs.getObject("id", UUID.class),
+        rs.getString("sport"),
+        rs.getString("title"),
+        rs.getString("location_name"),
+        rs.getDouble("lat"),
+        rs.getDouble("lng"),
+        rs.getTimestamp("start_time").toInstant(),
+        rs.getTimestamp("end_time").toInstant(),
+        rs.getInt("capacity"),
+        rs.getInt("participant_count"),
+        rs.getString("status")
     );
 
     public SessionRepository(JdbcTemplate jdbc) {
@@ -93,5 +110,64 @@ public class SessionRepository {
             id
         );
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    public List<SessionSummary> findNearby(double lat, double lng, double radiusMeters,
+                                            String sport, Instant from, Instant to,
+                                            int page, int size) {
+        var sql = new StringBuilder("""
+            SELECT s.id, s.sport, s.title, s.location_name,
+                   ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
+                   s.start_time, s.end_time, s.capacity, s.status,
+                   COUNT(sp.id) FILTER (WHERE sp.status = 'joined') AS participant_count
+            FROM sessions s
+            LEFT JOIN session_participants sp ON sp.session_id = s.id
+            WHERE s.status = 'active'
+              AND ST_DWithin(s.location::geography, ST_MakePoint(?, ?)::geography, ?)
+              AND s.start_time >= ?
+            """);
+        var params = new ArrayList<>();
+        params.add(lng);  // ST_MakePoint(lng, lat) — longitude first
+        params.add(lat);
+        params.add(radiusMeters);
+        params.add(Timestamp.from(from));
+        if (sport != null && !sport.isBlank()) {
+            sql.append("  AND s.sport = ?\n");
+            params.add(sport);
+        }
+        if (to != null) {
+            sql.append("  AND s.start_time <= ?\n");
+            params.add(Timestamp.from(to));
+        }
+        sql.append("GROUP BY s.id\nORDER BY s.start_time ASC\nLIMIT ? OFFSET ?");
+        params.add(size);
+        params.add((long) page * size);
+
+        return jdbc.query(sql.toString(), SUMMARY_MAPPER, params.toArray());
+    }
+
+    public long countNearby(double lat, double lng, double radiusMeters,
+                             String sport, Instant from, Instant to) {
+        var sql = new StringBuilder("""
+            SELECT COUNT(*) FROM sessions s
+            WHERE s.status = 'active'
+              AND ST_DWithin(s.location::geography, ST_MakePoint(?, ?)::geography, ?)
+              AND s.start_time >= ?
+            """);
+        var params = new ArrayList<>();
+        params.add(lng);  // ST_MakePoint(lng, lat) — longitude first
+        params.add(lat);
+        params.add(radiusMeters);
+        params.add(Timestamp.from(from));
+        if (sport != null && !sport.isBlank()) {
+            sql.append("  AND s.sport = ?\n");
+            params.add(sport);
+        }
+        if (to != null) {
+            sql.append("  AND s.start_time <= ?\n");
+            params.add(Timestamp.from(to));
+        }
+        Long count = jdbc.queryForObject(sql.toString(), Long.class, params.toArray());
+        return count != null ? count : 0L;
     }
 }

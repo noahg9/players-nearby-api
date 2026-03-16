@@ -4,6 +4,7 @@ import com.pickupsports.auth.service.JwtService;
 import com.pickupsports.auth.service.RateLimiterService;
 import com.pickupsports.session.domain.Participant;
 import com.pickupsports.session.domain.Session;
+import com.pickupsports.session.domain.SessionSummary;
 import com.pickupsports.session.repository.ParticipantRepository;
 import com.pickupsports.session.repository.SessionRepository;
 import com.pickupsports.session.service.ParticipantService;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
 
@@ -96,7 +98,68 @@ public class SessionController {
 
     record GuestJoinResponse(String status, String guestToken) {}
 
+    record SessionSummaryResponse(
+        String id, String sport, String title, String locationName,
+        LocationResponse location, String startTime, String endTime,
+        int capacity, int participantCount, int spotsLeft, String status
+    ) {}
+
+    record SessionListResponse(
+        List<SessionSummaryResponse> content,
+        int page, int size, long total
+    ) {}
+
     // ── Endpoints ───────────────────────────────────────────────────────────
+
+    @GetMapping
+    public ResponseEntity<SessionListResponse> getSessions(
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(defaultValue = "5000") double radius,
+            @RequestParam(required = false) String sport,
+            @RequestParam(required = false) String from,
+            @RequestParam(required = false) String to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        if (lat == null || lng == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "lat and lng are required");
+        }
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be >= 0");
+        }
+        if (size < 1 || size > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and 100");
+        }
+        if (radius <= 0 || radius > 50_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "radius must be between 1 and 50000 meters");
+        }
+
+        Instant fromInstant;
+        Instant toInstant;
+        try {
+            fromInstant = (from != null) ? Instant.parse(from) : Instant.now();
+            toInstant = (to != null) ? Instant.parse(to) : null;
+        } catch (DateTimeParseException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Invalid datetime format — use ISO 8601 (e.g. 2026-03-10T19:00:00Z)");
+        }
+
+        List<SessionSummary> sessions = sessionRepository.findNearby(
+            lat, lng, radius, sport, fromInstant, toInstant, page, size);
+        long total = sessionRepository.countNearby(lat, lng, radius, sport, fromInstant, toInstant);
+
+        List<SessionSummaryResponse> content = sessions.stream()
+            .map(s -> new SessionSummaryResponse(
+                s.id().toString(), s.sport(), s.title(), s.locationName(),
+                new LocationResponse(s.lat(), s.lng()),
+                s.startTime().toString(), s.endTime().toString(),
+                s.capacity(), s.participantCount(), s.spotsLeft(), s.status()
+            ))
+            .toList();
+
+        return ResponseEntity.ok(new SessionListResponse(content, page, size, total));
+    }
 
     @PostMapping
     public ResponseEntity<SessionDetailResponse> createSession(
