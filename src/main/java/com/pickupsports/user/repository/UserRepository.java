@@ -56,6 +56,10 @@ public class UserRepository {
         return user;
     }
 
+    public void deleteById(UUID id) {
+        jdbc.update("DELETE FROM users WHERE id = ?", id);
+    }
+
     public User update(UUID id, String name, String bio) {
         jdbc.update(
             "UPDATE users SET name = COALESCE(?, name), bio = COALESCE(?, bio) WHERE id = ?",

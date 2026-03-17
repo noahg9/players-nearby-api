@@ -90,6 +90,14 @@ public class UserController {
         return ResponseEntity.ok(new SportProfileResponse(profile.sport(), profile.skillLevel()));
     }
 
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteMe(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        UUID userId = requireAuth(authHeader);
+        userService.deleteAccount(userId);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/me/sessions")
     public ResponseEntity<MySessionsResponse> getMySessions(
             @RequestHeader(value = "Authorization", required = false) String authHeader,

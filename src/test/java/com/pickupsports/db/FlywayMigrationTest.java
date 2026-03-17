@@ -116,6 +116,28 @@ class FlywayMigrationTest {
             .isEqualTo(1);
     }
 
+    // --- V6: sessions.host_user_id is nullable with ON DELETE SET NULL FK ---
+
+    @Test
+    void sessionsHostUserIdIsNullable() {
+        String isNullable = jdbcTemplate.queryForObject(
+            "SELECT is_nullable FROM information_schema.columns " +
+            "WHERE table_schema = 'public' AND table_name = 'sessions' AND column_name = 'host_user_id'",
+            String.class);
+        assertThat(isNullable).isEqualTo("YES");
+    }
+
+    @Test
+    void sessionsHostUserIdFkConstraintExists() {
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM information_schema.referential_constraints " +
+            "WHERE constraint_schema = 'public' AND constraint_name = 'fk_sessions_host_user_id'",
+            Integer.class);
+        assertThat(count)
+            .as("Expected FK constraint 'fk_sessions_host_user_id' to exist")
+            .isEqualTo(1);
+    }
+
     // --- PostGIS extension ---
 
     @Test

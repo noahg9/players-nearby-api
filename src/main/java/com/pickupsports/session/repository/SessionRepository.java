@@ -207,6 +207,20 @@ public class SessionRepository {
         return jdbc.query(sql.toString(), SUMMARY_MAPPER, params.toArray());
     }
 
+    public List<Session> findActiveSessionsByHostUserId(UUID hostUserId) {
+        return jdbc.query(
+            """
+            SELECT id, sport, title, notes, status, visibility,
+                   ST_Y(location) AS lat, ST_X(location) AS lng,
+                   start_time, end_time, capacity, host_user_id,
+                   location_name, created_at
+            FROM sessions
+            WHERE host_user_id = ? AND status = 'active'
+            """,
+            SESSION_MAPPER,
+            hostUserId);
+    }
+
     public long countByUserId(UUID userId, String role, String status) {
         var sql = new StringBuilder("""
             SELECT COUNT(DISTINCT s.id)
