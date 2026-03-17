@@ -221,6 +221,12 @@ public class SessionRepository {
             hostUserId);
     }
 
+    public int markExpiredSessionsCompleted() {
+        return jdbc.update(
+            "UPDATE sessions SET status = 'completed' WHERE status = 'active' AND end_time < NOW()"
+        );
+    }
+
     public long countByUserId(UUID userId, String role, String status) {
         var sql = new StringBuilder("""
             SELECT COUNT(DISTINCT s.id)
