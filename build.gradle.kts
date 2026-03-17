@@ -40,8 +40,8 @@ dependencies {
     // Email
     implementation("com.resend:resend-java:4.12.0")
 
-    // Error tracking
-    implementation("io.sentry:sentry-spring-boot-starter-jakarta:8.0.0")
+    // Error tracking (base library — starter is Spring Boot 3.x only)
+    implementation("io.sentry:sentry:8.0.0")
 
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
