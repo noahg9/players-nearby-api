@@ -19,7 +19,7 @@ import java.util.UUID;
 @Service
 public class UserService {
 
-    private static final List<String> VALID_SKILL_LEVELS = List.of("beginner", "intermediate", "advanced");
+    private static final List<String> VALID_SKILL_LEVELS = List.of("beginner", "casual", "intermediate", "competitive", "elite");
 
     private final UserRepository userRepository;
     private final UserSportProfileRepository sportProfileRepository;
@@ -55,7 +55,7 @@ public class UserService {
     public UserSportProfile upsertSportProfile(UUID userId, String sport, String skillLevel) {
         if (!VALID_SKILL_LEVELS.contains(skillLevel)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "skillLevel must be one of: beginner, intermediate, advanced");
+                "skillLevel must be one of: beginner, casual, intermediate, competitive, elite");
         }
         userRepository.findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
