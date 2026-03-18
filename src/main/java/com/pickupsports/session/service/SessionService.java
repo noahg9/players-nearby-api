@@ -51,7 +51,8 @@ public class SessionService {
 
     @Transactional
     public Session updateSession(UUID callerId, UUID sessionId, String title, String notes,
-                                 Instant startTime, Instant endTime, Integer capacity) {
+                                 Instant startTime, Instant endTime, Integer capacity,
+                                 String sport, String locationName, Double lat, Double lng) {
         Session session = sessionRepository.findById(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
 
@@ -69,7 +70,8 @@ public class SessionService {
             }
         }
 
-        return sessionRepository.update(sessionId, title, notes, startTime, endTime, capacity);
+        return sessionRepository.update(sessionId, title, notes, startTime, endTime, capacity,
+                                        sport, locationName, lat, lng);
     }
 
     @Transactional

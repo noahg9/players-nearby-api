@@ -73,7 +73,8 @@ public class SessionRepository {
     }
 
     public Session update(UUID id, String title, String notes,
-                          Instant startTime, Instant endTime, Integer capacity) {
+                          Instant startTime, Instant endTime, Integer capacity,
+                          String sport, String locationName, Double lat, Double lng) {
         jdbc.update(
             """
             UPDATE sessions
@@ -81,13 +82,21 @@ public class SessionRepository {
                 notes = COALESCE(?, notes),
                 start_time = COALESCE(?, start_time),
                 end_time = COALESCE(?, end_time),
-                capacity = COALESCE(?, capacity)
+                capacity = COALESCE(?, capacity),
+                sport = COALESCE(?, sport),
+                location_name = COALESCE(?, location_name),
+                location = CASE WHEN ? IS NOT NULL
+                               THEN ST_SetSRID(ST_MakePoint(?, ?), 4326)
+                               ELSE location END
             WHERE id = ?
             """,
             title, notes,
             startTime != null ? Timestamp.from(startTime) : null,
             endTime != null ? Timestamp.from(endTime) : null,
-            capacity, id
+            capacity, sport, locationName,
+            lat,        // CASE WHEN ? IS NOT NULL
+            lng, lat,   // ST_MakePoint(lng, lat) — longitude first
+            id
         );
         return findById(id).orElseThrow();
     }

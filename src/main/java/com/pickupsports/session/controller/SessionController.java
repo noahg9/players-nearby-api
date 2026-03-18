@@ -74,7 +74,11 @@ public class SessionController {
         @Size(max = 2000) String notes,
         Instant startTime,
         Instant endTime,
-        @Min(1) Integer capacity
+        @Min(1) Integer capacity,
+        String sport,
+        @Size(max = 200) String locationName,
+        Double lat,
+        Double lng
     ) {}
 
     record GuestJoinRequest(@NotBlank @Size(min = 1, max = 50) String name) {}
@@ -133,8 +137,8 @@ public class SessionController {
         if (size < 1 || size > 100) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "size must be between 1 and 100");
         }
-        if (radius <= 0 || radius > 50_000) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "radius must be between 1 and 50000 meters");
+        if (radius <= 0 || radius > 100_000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "radius must be between 1 and 100000 meters");
         }
 
         Instant fromInstant;
@@ -193,7 +197,8 @@ public class SessionController {
         UUID callerId = requireAuth(authHeader);
         sessionService.updateSession(callerId, id,
             request.title(), request.notes(),
-            request.startTime(), request.endTime(), request.capacity());
+            request.startTime(), request.endTime(), request.capacity(),
+            request.sport(), request.locationName(), request.lat(), request.lng());
 
         return ResponseEntity.ok(buildDetailResponse(id));
     }
