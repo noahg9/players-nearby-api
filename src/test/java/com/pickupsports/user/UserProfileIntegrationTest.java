@@ -186,9 +186,9 @@ class UserProfileIntegrationTest {
         mockMvc.perform(put("/api/v1/users/me/sports/basketball")
                 .header("Authorization", bearerToken(userId))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"skillLevel\":\"advanced\"}"))
+                .content("{\"skillLevel\":\"competitive\"}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.skillLevel").value("advanced"));
+            .andExpect(jsonPath("$.skillLevel").value("competitive"));
     }
 
     @Test
