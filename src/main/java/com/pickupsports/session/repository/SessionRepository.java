@@ -75,29 +75,47 @@ public class SessionRepository {
     public Session update(UUID id, String title, String notes,
                           Instant startTime, Instant endTime, Integer capacity,
                           String sport, String locationName, Double lat, Double lng) {
-        jdbc.update(
-            """
-            UPDATE sessions
-            SET title = COALESCE(?, title),
-                notes = COALESCE(?, notes),
-                start_time = COALESCE(?, start_time),
-                end_time = COALESCE(?, end_time),
-                capacity = COALESCE(?, capacity),
-                sport = COALESCE(?, sport),
-                location_name = COALESCE(?, location_name),
-                location = CASE WHEN ? IS NOT NULL
-                               THEN ST_SetSRID(ST_MakePoint(?, ?), 4326)
-                               ELSE location END
-            WHERE id = ?
-            """,
-            title, notes,
-            startTime != null ? Timestamp.from(startTime) : null,
-            endTime != null ? Timestamp.from(endTime) : null,
-            capacity, sport, locationName,
-            lat,        // CASE WHEN ? IS NOT NULL
-            lng, lat,   // ST_MakePoint(lng, lat) — longitude first
-            id
-        );
+        if (lat != null && lng != null) {
+            jdbc.update(
+                """
+                UPDATE sessions
+                SET title = COALESCE(?, title),
+                    notes = COALESCE(?, notes),
+                    start_time = COALESCE(?, start_time),
+                    end_time = COALESCE(?, end_time),
+                    capacity = COALESCE(?, capacity),
+                    sport = COALESCE(?, sport),
+                    location_name = COALESCE(?, location_name),
+                    location = ST_SetSRID(ST_MakePoint(?, ?), 4326)
+                WHERE id = ?
+                """,
+                title, notes,
+                startTime != null ? Timestamp.from(startTime) : null,
+                endTime != null ? Timestamp.from(endTime) : null,
+                capacity, sport, locationName,
+                lng, lat,  // ST_MakePoint(lng, lat) — longitude first
+                id
+            );
+        } else {
+            jdbc.update(
+                """
+                UPDATE sessions
+                SET title = COALESCE(?, title),
+                    notes = COALESCE(?, notes),
+                    start_time = COALESCE(?, start_time),
+                    end_time = COALESCE(?, end_time),
+                    capacity = COALESCE(?, capacity),
+                    sport = COALESCE(?, sport),
+                    location_name = COALESCE(?, location_name)
+                WHERE id = ?
+                """,
+                title, notes,
+                startTime != null ? Timestamp.from(startTime) : null,
+                endTime != null ? Timestamp.from(endTime) : null,
+                capacity, sport, locationName,
+                id
+            );
+        }
         return findById(id).orElseThrow();
     }
 

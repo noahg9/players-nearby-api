@@ -224,7 +224,7 @@ class SessionDiscoveryIntegrationTest {
         mockMvc.perform(get("/api/v1/sessions")
                 .param("lat", String.valueOf(ANTWERP_LAT))
                 .param("lng", String.valueOf(ANTWERP_LNG))
-                .param("radius", "50001"))
+                .param("radius", "100001"))
             .andExpect(status().isBadRequest());
     }
 
