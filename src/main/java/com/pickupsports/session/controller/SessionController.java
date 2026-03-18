@@ -288,7 +288,7 @@ public class SessionController {
 
         List<ParticipantResponse> participantResponses = participants.stream()
             .map(p -> new ParticipantResponse(
-                p.isGuest() ? null : p.id().toString(),
+                p.isGuest() ? null : p.userId().toString(),
                 p.displayName(),
                 p.status(),
                 p.isGuest()
