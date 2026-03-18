@@ -13,6 +13,7 @@ public class RateLimiterService {
     // Acceptable for MVP at low user volume. At scale, replace with a Redis-backed Bucket4j ProxyManager.
     private final ConcurrentHashMap<String, Bucket> emailBuckets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Bucket> guestJoinBuckets = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Bucket> chatBuckets = new ConcurrentHashMap<>();
 
     /**
      * Returns true if the request is allowed; false if the rate limit is exceeded.
@@ -37,6 +38,21 @@ public class RateLimiterService {
             ip,
             k -> Bucket.builder()
                 .addLimit(limit -> limit.capacity(20).refillGreedy(20, Duration.ofHours(1)))
+                .build()
+        );
+        return bucket.tryConsume(1);
+    }
+
+    /**
+     * Returns true if the request is allowed; false if rate limit exceeded.
+     * Limit: 20 messages per key per minute.
+     * Key = userId.toString() for auth users, guestToken for guests.
+     */
+    public boolean tryConsumeChat(String key) {
+        Bucket bucket = chatBuckets.computeIfAbsent(
+            key,
+            k -> Bucket.builder()
+                .addLimit(limit -> limit.capacity(20).refillGreedy(20, Duration.ofMinutes(1)))
                 .build()
         );
         return bucket.tryConsume(1);
