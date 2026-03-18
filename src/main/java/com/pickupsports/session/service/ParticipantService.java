@@ -1,9 +1,11 @@
 package com.pickupsports.session.service;
 
+import com.pickupsports.auth.service.EmailService;
 import com.pickupsports.session.domain.Participant;
 import com.pickupsports.session.domain.Session;
 import com.pickupsports.session.repository.ParticipantRepository;
 import com.pickupsports.session.repository.SessionRepository;
+import com.pickupsports.user.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +19,17 @@ public class ParticipantService {
 
     private final SessionRepository sessionRepository;
     private final ParticipantRepository participantRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
 
     public ParticipantService(SessionRepository sessionRepository,
-                              ParticipantRepository participantRepository) {
+                              ParticipantRepository participantRepository,
+                              UserRepository userRepository,
+                              EmailService emailService) {
         this.sessionRepository = sessionRepository;
         this.participantRepository = participantRepository;
+        this.userRepository = userRepository;
+        this.emailService = emailService;
     }
 
     public record JoinResult(String status) {}
@@ -52,6 +60,12 @@ public class ParticipantService {
         );
         participantRepository.save(participant);
 
+        if ("joined".equals(status) && !userId.equals(session.hostUserId())) {
+            userRepository.findById(userId).ifPresent(joiner ->
+                notifyHostOfJoin(session, joiner.name())
+            );
+        }
+
         return new JoinResult(status);
     }
 
@@ -74,6 +88,10 @@ public class ParticipantService {
         );
         participantRepository.save(participant);
 
+        if ("joined".equals(status)) {
+            notifyHostOfJoin(session, guestName);
+        }
+
         return new GuestJoinResult(status, guestToken);
     }
 
@@ -94,12 +112,15 @@ public class ParticipantService {
         participantRepository.delete(participant.id());
 
         if ("joined".equals(participant.status())) {
-            promoteOldestWaitlisted(sessionId);
+            promoteOldestWaitlisted(sessionId, session);
         }
     }
 
     @Transactional
     public void guestLeave(UUID sessionId, String guestToken) {
+        Session session = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+
         Participant participant = participantRepository.findBySessionIdAndGuestToken(sessionId, guestToken)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Unknown guest token"));
@@ -107,13 +128,26 @@ public class ParticipantService {
         participantRepository.delete(participant.id());
 
         if ("joined".equals(participant.status())) {
-            promoteOldestWaitlisted(sessionId);
+            promoteOldestWaitlisted(sessionId, session);
         }
     }
 
-    private void promoteOldestWaitlisted(UUID sessionId) {
-        participantRepository.findOldestWaitlisted(sessionId)
-            .ifPresent(p -> participantRepository.updateStatus(p.id(), "joined"));
+    private void promoteOldestWaitlisted(UUID sessionId, Session session) {
+        participantRepository.findOldestWaitlisted(sessionId).ifPresent(promoted -> {
+            participantRepository.updateStatus(promoted.id(), "joined");
+            if (promoted.userId() != null) {
+                userRepository.findById(promoted.userId()).ifPresent(user ->
+                    emailService.sendWaitlistPromotion(
+                        user.email(), session.title(), session.startTime(), session.locationName())
+                );
+            }
+        });
+    }
+
+    private void notifyHostOfJoin(Session session, String joinerName) {
+        userRepository.findById(session.hostUserId()).ifPresent(host ->
+            emailService.sendHostJoinNotification(host.email(), joinerName, session.title())
+        );
     }
 
     /**

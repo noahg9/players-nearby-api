@@ -248,6 +248,23 @@ public class SessionRepository {
             hostUserId);
     }
 
+    public List<Session> findSessionsStartingBetween(Instant from, Instant to) {
+        return jdbc.query(
+            """
+            SELECT id, sport, title, notes, status, visibility,
+                   ST_Y(location) AS lat, ST_X(location) AS lng,
+                   start_time, end_time, capacity, host_user_id,
+                   location_name, created_at
+            FROM sessions
+            WHERE status = 'active'
+              AND start_time >= ?
+              AND start_time < ?
+            """,
+            SESSION_MAPPER,
+            Timestamp.from(from), Timestamp.from(to)
+        );
+    }
+
     public int markExpiredSessionsCompleted() {
         return jdbc.update(
             "UPDATE sessions SET status = 'completed' WHERE status = 'active' AND end_time < NOW()"

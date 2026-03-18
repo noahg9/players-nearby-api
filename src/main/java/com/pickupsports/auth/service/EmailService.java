@@ -17,6 +17,9 @@ public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
     private static final String FROM_ADDRESS = "onboarding@resend.dev";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter
+        .ofPattern("EEE, MMM d yyyy 'at' HH:mm 'UTC'")
+        .withZone(ZoneOffset.UTC);
 
     private final String appBaseUrl;
     private final Resend resend;
@@ -65,9 +68,7 @@ public class EmailService {
             return;
         }
 
-        String formattedTime = DateTimeFormatter.ofPattern("EEE, MMM d yyyy 'at' HH:mm 'UTC'")
-            .withZone(ZoneOffset.UTC)
-            .format(startTime);
+        String formattedTime = DATE_FORMATTER.format(startTime);
 
         try {
             CreateEmailOptions params = CreateEmailOptions.builder()
@@ -84,6 +85,81 @@ public class EmailService {
         } catch (ResendException e) {
             log.error("Failed to send cancellation notification to {}: {}", toEmail, e.getMessage());
             // Do NOT re-throw — cancellation should succeed even if email delivery fails
+        }
+    }
+
+    public void sendWaitlistPromotion(String toEmail, String sessionTitle,
+                                      Instant startTime, String locationName) {
+        if (!emailEnabled) {
+            log.debug("Resend API key not configured — waitlist promotion not sent to {}", toEmail);
+            return;
+        }
+
+        String formattedTime = DATE_FORMATTER.format(startTime);
+
+        try {
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(FROM_ADDRESS)
+                .to(toEmail)
+                .subject("You're in! A spot opened for " + escapeHtml(sessionTitle))
+                .html("<p>Good news — a spot opened up and you've been moved off the waitlist:</p>"
+                    + "<p><strong>" + escapeHtml(sessionTitle) + "</strong><br>"
+                    + escapeHtml(locationName) + "<br>"
+                    + formattedTime + "</p>"
+                    + "<p>See you there!</p>")
+                .build();
+            resend.emails().send(params);
+        } catch (ResendException e) {
+            log.error("Failed to send waitlist promotion to {}: {}", toEmail, e.getMessage());
+            // Do NOT re-throw — promotion should succeed even if email delivery fails
+        }
+    }
+
+    public void sendSessionReminder(String toEmail, String sessionTitle,
+                                    Instant startTime, String locationName) {
+        if (!emailEnabled) {
+            log.debug("Resend API key not configured — session reminder not sent to {}", toEmail);
+            return;
+        }
+
+        String formattedTime = DATE_FORMATTER.format(startTime);
+
+        try {
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(FROM_ADDRESS)
+                .to(toEmail)
+                .subject("Starting in 1 hour: " + escapeHtml(sessionTitle))
+                .html("<p>Your session starts in about 1 hour:</p>"
+                    + "<p><strong>" + escapeHtml(sessionTitle) + "</strong><br>"
+                    + escapeHtml(locationName) + "<br>"
+                    + formattedTime + "</p>"
+                    + "<p>See you there!</p>")
+                .build();
+            resend.emails().send(params);
+        } catch (ResendException e) {
+            log.error("Failed to send session reminder to {}: {}", toEmail, e.getMessage());
+            // Do NOT re-throw — reminder failure should not surface to callers
+        }
+    }
+
+    public void sendHostJoinNotification(String toEmail, String joinerName, String sessionTitle) {
+        if (!emailEnabled) {
+            log.debug("Resend API key not configured — host join notification not sent to {}", toEmail);
+            return;
+        }
+
+        try {
+            CreateEmailOptions params = CreateEmailOptions.builder()
+                .from(FROM_ADDRESS)
+                .to(toEmail)
+                .subject(escapeHtml(joinerName) + " joined your session")
+                .html("<p><strong>" + escapeHtml(joinerName) + "</strong> has joined your session "
+                    + "<strong>" + escapeHtml(sessionTitle) + "</strong>.</p>")
+                .build();
+            resend.emails().send(params);
+        } catch (ResendException e) {
+            log.error("Failed to send host join notification to {}: {}", toEmail, e.getMessage());
+            // Do NOT re-throw — join should succeed even if email delivery fails
         }
     }
 

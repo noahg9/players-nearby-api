@@ -123,4 +123,19 @@ public class ParticipantRepository {
             sessionId
         );
     }
+
+    public List<String> findJoinedParticipantEmails(UUID sessionId) {
+        return jdbc.queryForList(
+            """
+            SELECT u.email
+            FROM session_participants sp
+            JOIN users u ON sp.user_id = u.id
+            WHERE sp.session_id = ?
+              AND sp.user_id IS NOT NULL
+              AND sp.status = 'joined'
+            """,
+            String.class,
+            sessionId
+        );
+    }
 }
