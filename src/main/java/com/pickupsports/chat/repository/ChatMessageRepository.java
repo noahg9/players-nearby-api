@@ -66,4 +66,13 @@ public class ChatMessageRepository {
         Integer count = jdbc.queryForObject(COUNT_BY_SESSION_SQL, Integer.class, sessionId);
         return count != null ? count : 0;
     }
+
+    public int deleteForSessionsEndedBefore(java.time.Instant cutoff) {
+        return jdbc.update("""
+            DELETE FROM session_messages
+            WHERE session_id IN (
+                SELECT id FROM sessions WHERE end_time < ?
+            )
+            """, Timestamp.from(cutoff));
+    }
 }
