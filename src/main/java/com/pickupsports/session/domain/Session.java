@@ -13,6 +13,7 @@ public record Session(
         Instant startTime,
         Instant endTime,
         int capacity,
+        int offlineCount,
         UUID hostUserId,
         String locationName,
         double lat,

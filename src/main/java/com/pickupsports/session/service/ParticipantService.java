@@ -50,7 +50,7 @@ public class ParticipantService {
             });
 
         int joinedCount = participantRepository.countJoined(sessionId);
-        String status = joinedCount < session.capacity() ? "joined" : "waitlist";
+        String status = joinedCount < session.capacity() - session.offlineCount() ? "joined" : "waitlist";
 
         Participant participant = new Participant(
             UUID.randomUUID(), sessionId, userId,
@@ -77,7 +77,7 @@ public class ParticipantService {
         validateOpenForJoining(session);
 
         int joinedCount = participantRepository.countJoined(sessionId);
-        String status = joinedCount < session.capacity() ? "joined" : "waitlist";
+        String status = joinedCount < session.capacity() - session.offlineCount() ? "joined" : "waitlist";
         String guestToken = UUID.randomUUID().toString();
 
         Participant participant = new Participant(

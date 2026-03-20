@@ -28,6 +28,7 @@ public class SessionRepository {
         rs.getTimestamp("start_time").toInstant(),
         rs.getTimestamp("end_time").toInstant(),
         rs.getInt("capacity"),
+        rs.getInt("offline_count"),
         rs.getObject("host_user_id", UUID.class),
         rs.getString("location_name"),
         rs.getDouble("lat"),
@@ -45,6 +46,7 @@ public class SessionRepository {
         rs.getTimestamp("start_time").toInstant(),
         rs.getTimestamp("end_time").toInstant(),
         rs.getInt("capacity"),
+        rs.getInt("offline_count"),
         rs.getInt("participant_count"),
         rs.getString("status")
     );
@@ -54,18 +56,18 @@ public class SessionRepository {
     }
 
     public Session save(UUID id, String sport, String title, String notes,
-                        Instant startTime, Instant endTime, int capacity,
+                        Instant startTime, Instant endTime, int capacity, int offlineCount,
                         UUID hostUserId, double lat, double lng, String locationName) {
         jdbc.update(
             """
             INSERT INTO sessions
-                (id, sport, title, notes, status, start_time, end_time, capacity,
+                (id, sport, title, notes, status, start_time, end_time, capacity, offline_count,
                  host_user_id, location, location_name)
-            VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)
+            VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)
             """,
             id, sport, title, notes,
             Timestamp.from(startTime), Timestamp.from(endTime),
-            capacity, hostUserId,
+            capacity, offlineCount, hostUserId,
             lng, lat,  // ST_MakePoint(lng, lat) — longitude first
             locationName
         );
@@ -73,7 +75,7 @@ public class SessionRepository {
     }
 
     public Session update(UUID id, String title, String notes,
-                          Instant startTime, Instant endTime, Integer capacity,
+                          Instant startTime, Instant endTime, Integer capacity, Integer offlineCount,
                           String sport, String locationName, Double lat, Double lng) {
         if (lat != null && lng != null) {
             jdbc.update(
@@ -84,6 +86,7 @@ public class SessionRepository {
                     start_time = COALESCE(?, start_time),
                     end_time = COALESCE(?, end_time),
                     capacity = COALESCE(?, capacity),
+                    offline_count = COALESCE(?, offline_count),
                     sport = COALESCE(?, sport),
                     location_name = COALESCE(?, location_name),
                     location = ST_SetSRID(ST_MakePoint(?, ?), 4326)
@@ -92,7 +95,7 @@ public class SessionRepository {
                 title, notes,
                 startTime != null ? Timestamp.from(startTime) : null,
                 endTime != null ? Timestamp.from(endTime) : null,
-                capacity, sport, locationName,
+                capacity, offlineCount, sport, locationName,
                 lng, lat,  // ST_MakePoint(lng, lat) — longitude first
                 id
             );
@@ -105,6 +108,7 @@ public class SessionRepository {
                     start_time = COALESCE(?, start_time),
                     end_time = COALESCE(?, end_time),
                     capacity = COALESCE(?, capacity),
+                    offline_count = COALESCE(?, offline_count),
                     sport = COALESCE(?, sport),
                     location_name = COALESCE(?, location_name)
                 WHERE id = ?
@@ -112,7 +116,7 @@ public class SessionRepository {
                 title, notes,
                 startTime != null ? Timestamp.from(startTime) : null,
                 endTime != null ? Timestamp.from(endTime) : null,
-                capacity, sport, locationName,
+                capacity, offlineCount, sport, locationName,
                 id
             );
         }
@@ -128,7 +132,7 @@ public class SessionRepository {
             """
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
-                   start_time, end_time, capacity, host_user_id,
+                   start_time, end_time, capacity, offline_count, host_user_id,
                    location_name, created_at
             FROM sessions
             WHERE id = ?
@@ -145,7 +149,7 @@ public class SessionRepository {
         var sql = new StringBuilder("""
             SELECT s.id, s.sport, s.title, s.location_name,
                    ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
-                   s.start_time, s.end_time, s.capacity, s.status,
+                   s.start_time, s.end_time, s.capacity, s.offline_count, s.status,
                    COUNT(sp.id) FILTER (WHERE sp.status = 'joined') AS participant_count
             FROM sessions s
             LEFT JOIN session_participants sp ON sp.session_id = s.id
@@ -202,7 +206,7 @@ public class SessionRepository {
         var sql = new StringBuilder("""
             SELECT s.id, s.sport, s.title, s.location_name,
                    ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
-                   s.start_time, s.end_time, s.capacity, s.status,
+                   s.start_time, s.end_time, s.capacity, s.offline_count, s.status,
                    COUNT(sp2.id) FILTER (WHERE sp2.status = 'joined') AS participant_count
             FROM sessions s
             JOIN session_participants my_sp ON my_sp.session_id = s.id
@@ -239,7 +243,7 @@ public class SessionRepository {
             """
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
-                   start_time, end_time, capacity, host_user_id,
+                   start_time, end_time, capacity, offline_count, host_user_id,
                    location_name, created_at
             FROM sessions
             WHERE host_user_id = ? AND status = 'active'
@@ -253,7 +257,7 @@ public class SessionRepository {
             """
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
-                   start_time, end_time, capacity, host_user_id,
+                   start_time, end_time, capacity, offline_count, host_user_id,
                    location_name, created_at
             FROM sessions
             WHERE status = 'active'

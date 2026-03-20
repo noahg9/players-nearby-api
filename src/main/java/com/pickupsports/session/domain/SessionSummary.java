@@ -13,10 +13,11 @@ public record SessionSummary(
     Instant startTime,
     Instant endTime,
     int capacity,
+    int offlineCount,
     int participantCount,
     String status
 ) {
     public int spotsLeft() {
-        return Math.max(0, capacity - participantCount);
+        return Math.max(0, capacity - offlineCount - participantCount);
     }
 }

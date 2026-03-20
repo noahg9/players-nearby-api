@@ -1,0 +1,1 @@
+ALTER TABLE sessions ADD COLUMN offline_count INT NOT NULL DEFAULT 0;

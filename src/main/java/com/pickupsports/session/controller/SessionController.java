@@ -66,7 +66,8 @@ public class SessionController {
         @NotBlank String locationName,
         @NotNull Instant startTime,
         @NotNull Instant endTime,
-        @Min(1) int capacity
+        @Min(1) int capacity,
+        @Min(0) Integer offlineCount
     ) {}
 
     record UpdateSessionRequest(
@@ -75,6 +76,7 @@ public class SessionController {
         Instant startTime,
         Instant endTime,
         @Min(1) Integer capacity,
+        @Min(0) Integer offlineCount,
         String sport,
         @Size(max = 200) String locationName,
         Double lat,
@@ -95,7 +97,7 @@ public class SessionController {
         String id, String sport, String title, String notes,
         String locationName, LocationResponse location,
         String startTime, String endTime,
-        int capacity, int spotsLeft, String status,
+        int capacity, int offlineCount, int spotsLeft, String status,
         HostResponse host,
         List<ParticipantResponse> participants
     ) {}
@@ -182,6 +184,7 @@ public class SessionController {
             hostUserId,
             request.sport(), request.title(), request.notes(),
             request.startTime(), request.endTime(), request.capacity(),
+            request.offlineCount() != null ? request.offlineCount() : 0,
             request.lat(), request.lng(), request.locationName()
         );
 
@@ -197,7 +200,7 @@ public class SessionController {
         UUID callerId = requireAuth(authHeader);
         sessionService.updateSession(callerId, id,
             request.title(), request.notes(),
-            request.startTime(), request.endTime(), request.capacity(),
+            request.startTime(), request.endTime(), request.capacity(), request.offlineCount(),
             request.sport(), request.locationName(), request.lat(), request.lng());
 
         return ResponseEntity.ok(buildDetailResponse(id));
@@ -284,7 +287,7 @@ public class SessionController {
         int joinedCount = (int) participants.stream()
             .filter(p -> "joined".equals(p.status()))
             .count();
-        int spotsLeft = Math.max(0, session.capacity() - joinedCount);
+        int spotsLeft = Math.max(0, session.capacity() - session.offlineCount() - joinedCount);
 
         List<ParticipantResponse> participantResponses = participants.stream()
             .map(p -> new ParticipantResponse(
@@ -305,6 +308,7 @@ public class SessionController {
             session.startTime().toString(),
             session.endTime().toString(),
             session.capacity(),
+            session.offlineCount(),
             spotsLeft,
             session.status(),
             new HostResponse(host.id().toString(), host.name()),

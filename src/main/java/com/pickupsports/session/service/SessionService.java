@@ -36,11 +36,11 @@ public class SessionService {
 
     @Transactional
     public Session createSession(UUID hostUserId, String sport, String title, String notes,
-                                 Instant startTime, Instant endTime, int capacity,
+                                 Instant startTime, Instant endTime, int capacity, int offlineCount,
                                  double lat, double lng, String locationName) {
         UUID sessionId = UUID.randomUUID();
         sessionRepository.save(sessionId, sport, title, notes, startTime, endTime,
-                               capacity, hostUserId, lat, lng, locationName);
+                               capacity, offlineCount, hostUserId, lat, lng, locationName);
         Participant hostParticipant = new Participant(
             UUID.randomUUID(), sessionId, hostUserId, null, null,
             "joined", Instant.now(), null
@@ -51,7 +51,7 @@ public class SessionService {
 
     @Transactional
     public Session updateSession(UUID callerId, UUID sessionId, String title, String notes,
-                                 Instant startTime, Instant endTime, Integer capacity,
+                                 Instant startTime, Instant endTime, Integer capacity, Integer offlineCount,
                                  String sport, String locationName, Double lat, Double lng) {
         Session session = sessionRepository.findById(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
@@ -62,15 +62,16 @@ public class SessionService {
         if (!session.isActive()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session is not active");
         }
-        if (capacity != null) {
-            int joinedCount = participantRepository.countJoined(sessionId);
-            if (capacity < joinedCount) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Capacity cannot be less than current number of joined participants (" + joinedCount + ")");
-            }
+
+        int effectiveCapacity = capacity != null ? capacity : session.capacity();
+        int effectiveOfflineCount = offlineCount != null ? offlineCount : session.offlineCount();
+        int joinedCount = participantRepository.countJoined(sessionId);
+        if (effectiveCapacity < joinedCount + effectiveOfflineCount) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Capacity cannot be less than joined participants (" + joinedCount + ") plus offline count (" + effectiveOfflineCount + ")");
         }
 
-        return sessionRepository.update(sessionId, title, notes, startTime, endTime, capacity,
+        return sessionRepository.update(sessionId, title, notes, startTime, endTime, capacity, offlineCount,
                                         sport, locationName, lat, lng);
     }
 
