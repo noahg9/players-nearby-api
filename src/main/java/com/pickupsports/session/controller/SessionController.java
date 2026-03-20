@@ -123,7 +123,7 @@ public class SessionController {
     public ResponseEntity<SessionListResponse> getSessions(
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(defaultValue = "5000") double radius,
+            @RequestParam(defaultValue = "25000") double radius,
             @RequestParam(required = false) String sport,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
