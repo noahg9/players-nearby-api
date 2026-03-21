@@ -1,5 +1,6 @@
 package com.pickupsports.session.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -15,7 +16,9 @@ public record SessionSummary(
     int capacity,
     int offlineCount,
     int participantCount,
-    String status
+    String status,
+    BigDecimal venueCost,
+    String costSplit
 ) {
     public int spotsLeft() {
         return Math.max(0, capacity - offlineCount - participantCount);

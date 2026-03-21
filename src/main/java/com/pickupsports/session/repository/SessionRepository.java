@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,7 +34,9 @@ public class SessionRepository {
         rs.getString("location_name"),
         rs.getDouble("lat"),
         rs.getDouble("lng"),
-        rs.getTimestamp("created_at").toInstant()
+        rs.getTimestamp("created_at").toInstant(),
+        rs.getBigDecimal("venue_cost"),
+        rs.getString("cost_split")
     );
 
     private static final RowMapper<SessionSummary> SUMMARY_MAPPER = (rs, i) -> new SessionSummary(
@@ -48,7 +51,9 @@ public class SessionRepository {
         rs.getInt("capacity"),
         rs.getInt("offline_count"),
         rs.getInt("participant_count"),
-        rs.getString("status")
+        rs.getString("status"),
+        rs.getBigDecimal("venue_cost"),
+        rs.getString("cost_split")
     );
 
     public SessionRepository(JdbcTemplate jdbc) {
@@ -57,26 +62,28 @@ public class SessionRepository {
 
     public Session save(UUID id, String sport, String title, String notes,
                         Instant startTime, Instant endTime, int capacity, int offlineCount,
-                        UUID hostUserId, double lat, double lng, String locationName) {
+                        UUID hostUserId, double lat, double lng, String locationName,
+                        BigDecimal venueCost, String costSplit) {
         jdbc.update(
             """
             INSERT INTO sessions
                 (id, sport, title, notes, status, start_time, end_time, capacity, offline_count,
-                 host_user_id, location, location_name)
-            VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?)
+                 host_user_id, location, location_name, venue_cost, cost_split)
+            VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?)
             """,
             id, sport, title, notes,
             Timestamp.from(startTime), Timestamp.from(endTime),
             capacity, offlineCount, hostUserId,
             lng, lat,  // ST_MakePoint(lng, lat) — longitude first
-            locationName
+            locationName, venueCost, costSplit
         );
         return findById(id).orElseThrow();
     }
 
     public Session update(UUID id, String title, String notes,
                           Instant startTime, Instant endTime, Integer capacity, Integer offlineCount,
-                          String sport, String locationName, Double lat, Double lng) {
+                          String sport, String locationName, Double lat, Double lng,
+                          BigDecimal venueCost, String costSplit) {
         if (lat != null && lng != null) {
             jdbc.update(
                 """
@@ -89,7 +96,9 @@ public class SessionRepository {
                     offline_count = COALESCE(?, offline_count),
                     sport = COALESCE(?, sport),
                     location_name = COALESCE(?, location_name),
-                    location = ST_SetSRID(ST_MakePoint(?, ?), 4326)
+                    location = ST_SetSRID(ST_MakePoint(?, ?), 4326),
+                    venue_cost = ?,
+                    cost_split = ?
                 WHERE id = ?
                 """,
                 title, notes,
@@ -97,6 +106,7 @@ public class SessionRepository {
                 endTime != null ? Timestamp.from(endTime) : null,
                 capacity, offlineCount, sport, locationName,
                 lng, lat,  // ST_MakePoint(lng, lat) — longitude first
+                venueCost, costSplit,
                 id
             );
         } else {
@@ -110,13 +120,16 @@ public class SessionRepository {
                     capacity = COALESCE(?, capacity),
                     offline_count = COALESCE(?, offline_count),
                     sport = COALESCE(?, sport),
-                    location_name = COALESCE(?, location_name)
+                    location_name = COALESCE(?, location_name),
+                    venue_cost = ?,
+                    cost_split = ?
                 WHERE id = ?
                 """,
                 title, notes,
                 startTime != null ? Timestamp.from(startTime) : null,
                 endTime != null ? Timestamp.from(endTime) : null,
                 capacity, offlineCount, sport, locationName,
+                venueCost, costSplit,
                 id
             );
         }
@@ -133,7 +146,7 @@ public class SessionRepository {
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
                    start_time, end_time, capacity, offline_count, host_user_id,
-                   location_name, created_at
+                   location_name, created_at, venue_cost, cost_split
             FROM sessions
             WHERE id = ?
             """,
@@ -150,6 +163,7 @@ public class SessionRepository {
             SELECT s.id, s.sport, s.title, s.location_name,
                    ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
                    s.start_time, s.end_time, s.capacity, s.offline_count, s.status,
+                   s.venue_cost, s.cost_split,
                    COUNT(sp.id) FILTER (WHERE sp.status = 'joined') AS participant_count
             FROM sessions s
             LEFT JOIN session_participants sp ON sp.session_id = s.id
@@ -207,6 +221,7 @@ public class SessionRepository {
             SELECT s.id, s.sport, s.title, s.location_name,
                    ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
                    s.start_time, s.end_time, s.capacity, s.offline_count, s.status,
+                   s.venue_cost, s.cost_split,
                    COUNT(sp2.id) FILTER (WHERE sp2.status = 'joined') AS participant_count
             FROM sessions s
             JOIN session_participants my_sp ON my_sp.session_id = s.id
@@ -244,7 +259,7 @@ public class SessionRepository {
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
                    start_time, end_time, capacity, offline_count, host_user_id,
-                   location_name, created_at
+                   location_name, created_at, venue_cost, cost_split
             FROM sessions
             WHERE host_user_id = ? AND status = 'active'
             """,
@@ -258,7 +273,7 @@ public class SessionRepository {
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
                    start_time, end_time, capacity, offline_count, host_user_id,
-                   location_name, created_at
+                   location_name, created_at, venue_cost, cost_split
             FROM sessions
             WHERE status = 'active'
               AND start_time >= ?

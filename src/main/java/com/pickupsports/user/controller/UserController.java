@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,7 +54,8 @@ public class UserController {
     record MySessionSummaryResponse(
         String id, String sport, String title, String locationName,
         LocationResponse location, String startTime, String endTime,
-        int capacity, int participantCount, int spotsLeft, String status
+        int capacity, int participantCount, int spotsLeft, String status,
+        BigDecimal venueCost, String costSplit
     ) {}
 
     record MySessionsResponse(
@@ -131,7 +133,8 @@ public class UserController {
                 s.id().toString(), s.sport(), s.title(), s.locationName(),
                 new LocationResponse(s.lat(), s.lng()),
                 s.startTime().toString(), s.endTime().toString(),
-                s.capacity(), s.participantCount(), s.spotsLeft(), s.status()
+                s.capacity(), s.participantCount(), s.spotsLeft(), s.status(),
+                s.venueCost(), s.costSplit()
             ))
             .toList();
 

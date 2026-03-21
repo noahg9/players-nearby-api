@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -67,7 +68,9 @@ public class SessionController {
         @NotNull Instant startTime,
         @NotNull Instant endTime,
         @Min(1) int capacity,
-        @Min(0) Integer offlineCount
+        @Min(0) Integer offlineCount,
+        BigDecimal venueCost,
+        String costSplit
     ) {}
 
     record UpdateSessionRequest(
@@ -80,7 +83,9 @@ public class SessionController {
         String sport,
         @Size(max = 200) String locationName,
         Double lat,
-        Double lng
+        Double lng,
+        BigDecimal venueCost,
+        String costSplit
     ) {}
 
     record GuestJoinRequest(@NotBlank @Size(min = 1, max = 50) String name) {}
@@ -99,7 +104,9 @@ public class SessionController {
         String startTime, String endTime,
         int capacity, int offlineCount, int spotsLeft, String status,
         HostResponse host,
-        List<ParticipantResponse> participants
+        List<ParticipantResponse> participants,
+        BigDecimal venueCost,
+        String costSplit
     ) {}
 
     record JoinResponse(String status) {}
@@ -109,7 +116,8 @@ public class SessionController {
     record SessionSummaryResponse(
         String id, String sport, String title, String locationName,
         LocationResponse location, String startTime, String endTime,
-        int capacity, int participantCount, int spotsLeft, String status
+        int capacity, int participantCount, int spotsLeft, String status,
+        BigDecimal venueCost, String costSplit
     ) {}
 
     record SessionListResponse(
@@ -162,7 +170,8 @@ public class SessionController {
                 s.id().toString(), s.sport(), s.title(), s.locationName(),
                 new LocationResponse(s.lat(), s.lng()),
                 s.startTime().toString(), s.endTime().toString(),
-                s.capacity(), s.participantCount(), s.spotsLeft(), s.status()
+                s.capacity(), s.participantCount(), s.spotsLeft(), s.status(),
+                s.venueCost(), s.costSplit()
             ))
             .toList();
 
@@ -180,12 +189,15 @@ public class SessionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before endTime");
         }
 
+        validateVenueCost(request.venueCost(), request.costSplit());
+
         Session session = sessionService.createSession(
             hostUserId,
             request.sport(), request.title(), request.notes(),
             request.startTime(), request.endTime(), request.capacity(),
             request.offlineCount() != null ? request.offlineCount() : 0,
-            request.lat(), request.lng(), request.locationName()
+            request.lat(), request.lng(), request.locationName(),
+            request.venueCost(), request.costSplit()
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(buildDetailResponse(session.id()));
@@ -198,10 +210,12 @@ public class SessionController {
             @Valid @RequestBody UpdateSessionRequest request) {
 
         UUID callerId = requireAuth(authHeader);
+        validateVenueCost(request.venueCost(), request.costSplit());
         sessionService.updateSession(callerId, id,
             request.title(), request.notes(),
             request.startTime(), request.endTime(), request.capacity(), request.offlineCount(),
-            request.sport(), request.locationName(), request.lat(), request.lng());
+            request.sport(), request.locationName(), request.lat(), request.lng(),
+            request.venueCost(), request.costSplit());
 
         return ResponseEntity.ok(buildDetailResponse(id));
     }
@@ -312,7 +326,20 @@ public class SessionController {
             spotsLeft,
             session.status(),
             new HostResponse(host.id().toString(), host.name()),
-            participantResponses
+            participantResponses,
+            session.venueCost(),
+            session.costSplit()
         );
+    }
+
+    private void validateVenueCost(BigDecimal venueCost, String costSplit) {
+        if (venueCost == null) return;
+        if (venueCost.compareTo(BigDecimal.ZERO) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "venueCost must be >= 0");
+        }
+        if (!"split_equally".equals(costSplit) && !"host_covers".equals(costSplit)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "costSplit must be 'split_equally' or 'host_covers' when venueCost is set");
+        }
     }
 }

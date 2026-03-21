@@ -1,5 +1,6 @@
 package com.pickupsports.session.domain;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -18,7 +19,9 @@ public record Session(
         String locationName,
         double lat,
         double lng,
-        Instant createdAt) {
+        Instant createdAt,
+        BigDecimal venueCost,
+        String costSplit) {
 
     public boolean isActive() {
         return "active".equals(status);

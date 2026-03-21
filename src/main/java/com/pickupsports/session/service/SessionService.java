@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -37,10 +38,12 @@ public class SessionService {
     @Transactional
     public Session createSession(UUID hostUserId, String sport, String title, String notes,
                                  Instant startTime, Instant endTime, int capacity, int offlineCount,
-                                 double lat, double lng, String locationName) {
+                                 double lat, double lng, String locationName,
+                                 BigDecimal venueCost, String costSplit) {
         UUID sessionId = UUID.randomUUID();
         sessionRepository.save(sessionId, sport, title, notes, startTime, endTime,
-                               capacity, offlineCount, hostUserId, lat, lng, locationName);
+                               capacity, offlineCount, hostUserId, lat, lng, locationName,
+                               venueCost, costSplit);
         Participant hostParticipant = new Participant(
             UUID.randomUUID(), sessionId, hostUserId, null, null,
             "joined", Instant.now(), null
@@ -52,7 +55,8 @@ public class SessionService {
     @Transactional
     public Session updateSession(UUID callerId, UUID sessionId, String title, String notes,
                                  Instant startTime, Instant endTime, Integer capacity, Integer offlineCount,
-                                 String sport, String locationName, Double lat, Double lng) {
+                                 String sport, String locationName, Double lat, Double lng,
+                                 BigDecimal venueCost, String costSplit) {
         Session session = sessionRepository.findById(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
 
@@ -72,7 +76,7 @@ public class SessionService {
         }
 
         return sessionRepository.update(sessionId, title, notes, startTime, endTime, capacity, offlineCount,
-                                        sport, locationName, lat, lng);
+                                        sport, locationName, lat, lng, venueCost, costSplit);
     }
 
     @Transactional
