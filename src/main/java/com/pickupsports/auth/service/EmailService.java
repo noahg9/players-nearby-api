@@ -16,7 +16,7 @@ import java.time.format.DateTimeFormatter;
 public class EmailService {
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
-    private static final String FROM_ADDRESS = "onboarding@resend.dev";
+    private static final String FROM_ADDRESS = "noreply@playersnearby.com";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter
         .ofPattern("EEE, MMM d yyyy 'at' HH:mm 'UTC'")
         .withZone(ZoneOffset.UTC);
