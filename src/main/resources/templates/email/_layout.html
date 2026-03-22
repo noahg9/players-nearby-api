@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html th:fragment="emailLayout(heading, content)" lang="en"
+      xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+
+        <!-- Header -->
+        <tr><td style="background:#16a34a;border-radius:8px 8px 0 0;padding:20px 32px;">
+          <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.3px;">Players Nearby</span>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="background:#ffffff;padding:32px;color:#111827;font-size:15px;line-height:1.6;">
+          <h1 th:text="${heading}" style="margin:0 0 20px;font-size:20px;font-weight:700;color:#111827;">Heading</h1>
+          <div th:replace="${content}">Content goes here.</div>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#f9fafb;border-radius:0 0 8px 8px;border-top:1px solid #e5e7eb;padding:16px 32px;text-align:center;color:#9ca3af;font-size:12px;line-height:1.5;">
+          Players Nearby &mdash; find pickup sports near you<br>
+          <a th:href="${appBaseUrl + '/privacy'}" style="color:#9ca3af;">Privacy Policy</a>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

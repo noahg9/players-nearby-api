@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -24,14 +26,17 @@ public class EmailService {
     private final String appBaseUrl;
     private final Resend resend;
     private final boolean emailEnabled;
+    private final TemplateEngine templateEngine;
 
     public EmailService(
         @Value("${app.resend-api-key}") String resendApiKey,
-        @Value("${app.base-url}") String appBaseUrl
+        @Value("${app.base-url}") String appBaseUrl,
+        TemplateEngine templateEngine
     ) {
         this.appBaseUrl = appBaseUrl;
         this.emailEnabled = resendApiKey != null && !resendApiKey.isBlank();
         this.resend = emailEnabled ? new Resend(resendApiKey) : null;
+        this.templateEngine = templateEngine;
     }
 
     public void sendMagicLink(String toEmail, String token) {
@@ -45,20 +50,11 @@ public class EmailService {
             return;
         }
 
-        try {
-            CreateEmailOptions params = CreateEmailOptions.builder()
-                .from(FROM_ADDRESS)
-                .to(toEmail)
-                .subject("Your Pickup Sports login link")
-                .html("<p>Click <a href=\"" + magicLinkUrl + "\">here</a> to log in to Pickup Sports.</p>"
-                    + "<p>This link expires in 15 minutes. If you did not request this, ignore this email.</p>")
-                .build();
-            resend.emails().send(params);
-        } catch (ResendException e) {
-            log.error("Failed to send magic link to {}: {}", toEmail, e.getMessage());
-            // Do NOT re-throw — caller returns 200 OK regardless.
-            // Prevents email enumeration attacks and avoids user-visible errors for transient email failures.
-        }
+        Context ctx = baseContext();
+        ctx.setVariable("magicLinkUrl", magicLinkUrl);
+
+        send(toEmail, "Your login link for Players Nearby", "email/magic-link", ctx,
+            "Failed to send magic link to {}");
     }
 
     public void sendCancellationNotification(String toEmail, String sessionTitle,
@@ -68,24 +64,13 @@ public class EmailService {
             return;
         }
 
-        String formattedTime = DATE_FORMATTER.format(startTime);
+        Context ctx = baseContext();
+        ctx.setVariable("sessionTitle", sessionTitle);
+        ctx.setVariable("locationName", locationName);
+        ctx.setVariable("formattedTime", DATE_FORMATTER.format(startTime));
 
-        try {
-            CreateEmailOptions params = CreateEmailOptions.builder()
-                .from(FROM_ADDRESS)
-                .to(toEmail)
-                .subject("Session cancelled: " + escapeHtml(sessionTitle))
-                .html("<p>The following session has been cancelled by the host:</p>"
-                    + "<p><strong>" + escapeHtml(sessionTitle) + "</strong><br>"
-                    + escapeHtml(locationName) + "<br>"
-                    + formattedTime + "</p>"
-                    + "<p>We hope to see you at another session soon!</p>")
-                .build();
-            resend.emails().send(params);
-        } catch (ResendException e) {
-            log.error("Failed to send cancellation notification to {}: {}", toEmail, e.getMessage());
-            // Do NOT re-throw — cancellation should succeed even if email delivery fails
-        }
+        send(toEmail, "Session cancelled: " + sessionTitle, "email/cancellation", ctx,
+            "Failed to send cancellation notification to {}");
     }
 
     public void sendWaitlistPromotion(String toEmail, String sessionTitle,
@@ -95,24 +80,13 @@ public class EmailService {
             return;
         }
 
-        String formattedTime = DATE_FORMATTER.format(startTime);
+        Context ctx = baseContext();
+        ctx.setVariable("sessionTitle", sessionTitle);
+        ctx.setVariable("locationName", locationName);
+        ctx.setVariable("formattedTime", DATE_FORMATTER.format(startTime));
 
-        try {
-            CreateEmailOptions params = CreateEmailOptions.builder()
-                .from(FROM_ADDRESS)
-                .to(toEmail)
-                .subject("You're in! A spot opened for " + escapeHtml(sessionTitle))
-                .html("<p>Good news — a spot opened up and you've been moved off the waitlist:</p>"
-                    + "<p><strong>" + escapeHtml(sessionTitle) + "</strong><br>"
-                    + escapeHtml(locationName) + "<br>"
-                    + formattedTime + "</p>"
-                    + "<p>See you there!</p>")
-                .build();
-            resend.emails().send(params);
-        } catch (ResendException e) {
-            log.error("Failed to send waitlist promotion to {}: {}", toEmail, e.getMessage());
-            // Do NOT re-throw — promotion should succeed even if email delivery fails
-        }
+        send(toEmail, "You're in! A spot opened for " + sessionTitle, "email/waitlist-promotion", ctx,
+            "Failed to send waitlist promotion to {}");
     }
 
     public void sendSessionReminder(String toEmail, String sessionTitle,
@@ -122,24 +96,13 @@ public class EmailService {
             return;
         }
 
-        String formattedTime = DATE_FORMATTER.format(startTime);
+        Context ctx = baseContext();
+        ctx.setVariable("sessionTitle", sessionTitle);
+        ctx.setVariable("locationName", locationName);
+        ctx.setVariable("formattedTime", DATE_FORMATTER.format(startTime));
 
-        try {
-            CreateEmailOptions params = CreateEmailOptions.builder()
-                .from(FROM_ADDRESS)
-                .to(toEmail)
-                .subject("Starting in 1 hour: " + escapeHtml(sessionTitle))
-                .html("<p>Your session starts in about 1 hour:</p>"
-                    + "<p><strong>" + escapeHtml(sessionTitle) + "</strong><br>"
-                    + escapeHtml(locationName) + "<br>"
-                    + formattedTime + "</p>"
-                    + "<p>See you there!</p>")
-                .build();
-            resend.emails().send(params);
-        } catch (ResendException e) {
-            log.error("Failed to send session reminder to {}: {}", toEmail, e.getMessage());
-            // Do NOT re-throw — reminder failure should not surface to callers
-        }
+        send(toEmail, "Starting in 1 hour: " + sessionTitle, "email/session-reminder", ctx,
+            "Failed to send session reminder to {}");
     }
 
     public void sendHostJoinNotification(String toEmail, String joinerName, String sessionTitle) {
@@ -148,26 +111,36 @@ public class EmailService {
             return;
         }
 
+        Context ctx = baseContext();
+        ctx.setVariable("joinerName", joinerName);
+        ctx.setVariable("sessionTitle", sessionTitle);
+
+        send(toEmail, joinerName + " joined your session", "email/host-join", ctx,
+            "Failed to send host join notification to {}");
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /** Returns a Context pre-loaded with variables available in every template. */
+    private Context baseContext() {
+        Context ctx = new Context();
+        ctx.setVariable("appBaseUrl", appBaseUrl.stripTrailing());
+        return ctx;
+    }
+
+    private void send(String toEmail, String subject, String template, Context ctx, String errorMessage) {
         try {
+            String html = templateEngine.process(template, ctx);
             CreateEmailOptions params = CreateEmailOptions.builder()
                 .from(FROM_ADDRESS)
                 .to(toEmail)
-                .subject(escapeHtml(joinerName) + " joined your session")
-                .html("<p><strong>" + escapeHtml(joinerName) + "</strong> has joined your session "
-                    + "<strong>" + escapeHtml(sessionTitle) + "</strong>.</p>")
+                .subject(subject)
+                .html(html)
                 .build();
             resend.emails().send(params);
         } catch (ResendException e) {
-            log.error("Failed to send host join notification to {}: {}", toEmail, e.getMessage());
-            // Do NOT re-throw — join should succeed even if email delivery fails
+            log.error(errorMessage + ": {}", toEmail, e.getMessage());
+            // Do NOT re-throw — email failures should not surface to callers.
         }
-    }
-
-    private static String escapeHtml(String text) {
-        if (text == null) return "";
-        return text.replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;")
-                   .replace("\"", "&quot;");
     }
 }

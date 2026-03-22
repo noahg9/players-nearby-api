@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html th:replace="~{email/_layout :: emailLayout('New participant', ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+<section>
+  <p style="margin:0">
+    <strong th:text="${joinerName}">Someone</strong> has joined your session
+    <strong th:text="${sessionTitle}">Session title</strong>.
+  </p>
+</section>
+</body>
+</html>

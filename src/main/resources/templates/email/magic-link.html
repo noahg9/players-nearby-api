@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html th:replace="~{email/_layout :: emailLayout('Log in to Players Nearby', ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+<section>
+  <p style="margin:0 0 16px">Click the button below to log in to Players Nearby.</p>
+  <a th:href="${magicLinkUrl}"
+     style="display:inline-block;padding:12px 24px;background:#16a34a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px">
+    Log in to Players Nearby
+  </a>
+  <p style="margin:24px 0 0;color:#6b7280;font-size:13px">
+    This link expires in 15&nbsp;minutes. If you didn't request this, you can safely ignore this email.
+  </p>
+</section>
+</body>
+</html>

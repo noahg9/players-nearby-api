@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html th:replace="~{email/_layout :: emailLayout('You\'re off the waitlist', ~{::section})}"
+      xmlns:th="http://www.thymeleaf.org" lang="en">
+<body>
+<section>
+  <p style="margin:0 0 16px">Good news &mdash; a spot opened up and you've been moved off the waitlist:</p>
+  <table cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin:0;width:100%;">
+    <tr><td style="font-weight:700;font-size:16px;color:#111827;padding-bottom:6px;" th:text="${sessionTitle}">Session title</td></tr>
+    <tr><td style="color:#6b7280;font-size:14px;">&#128205; <span th:text="${locationName}">Location</span></td></tr>
+    <tr><td style="color:#6b7280;font-size:14px;padding-top:4px;">&#128336; <span th:text="${formattedTime}">Time</span></td></tr>
+  </table>
+  <p style="margin:16px 0 0">See you there!</p>
+</section>
+</body>
+</html>

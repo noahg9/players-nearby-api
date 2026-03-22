@@ -39,6 +39,7 @@ dependencies {
 
     // Email
     implementation("com.resend:resend-java:4.12.0")
+    implementation("org.springframework.boot:spring-boot-starter-thymeleaf")
 
     // Error tracking (base library — starter is Spring Boot 3.x only)
     implementation("io.sentry:sentry:8.0.0")
