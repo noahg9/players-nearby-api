@@ -21,7 +21,8 @@ public record Session(
         double lng,
         Instant createdAt,
         BigDecimal venueCost,
-        String costSplit) {
+        String costSplit,
+        String skillLevel) {
 
     public boolean isActive() {
         return "active".equals(status);

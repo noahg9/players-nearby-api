@@ -70,7 +70,8 @@ public class SessionController {
         @Min(1) int capacity,
         @Min(0) Integer offlineCount,
         BigDecimal venueCost,
-        String costSplit
+        String costSplit,
+        String skillLevel
     ) {}
 
     record UpdateSessionRequest(
@@ -85,7 +86,8 @@ public class SessionController {
         Double lat,
         Double lng,
         BigDecimal venueCost,
-        String costSplit
+        String costSplit,
+        String skillLevel
     ) {}
 
     record GuestJoinRequest(@NotBlank @Size(min = 1, max = 50) String name) {}
@@ -106,7 +108,8 @@ public class SessionController {
         HostResponse host,
         List<ParticipantResponse> participants,
         BigDecimal venueCost,
-        String costSplit
+        String costSplit,
+        String skillLevel
     ) {}
 
     record JoinResponse(String status) {}
@@ -117,7 +120,7 @@ public class SessionController {
         String id, String sport, String title, String locationName,
         LocationResponse location, String startTime, String endTime,
         int capacity, int participantCount, int spotsLeft, String status,
-        BigDecimal venueCost, String costSplit
+        BigDecimal venueCost, String costSplit, String skillLevel
     ) {}
 
     record SessionListResponse(
@@ -133,6 +136,7 @@ public class SessionController {
             @RequestParam(required = false) Double lng,
             @RequestParam(defaultValue = "25000") double radius,
             @RequestParam(required = false) String sport,
+            @RequestParam(required = false) String skillLevel,
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
             @RequestParam(defaultValue = "0") int page,
@@ -162,8 +166,8 @@ public class SessionController {
         }
 
         List<SessionSummary> sessions = sessionRepository.findNearby(
-            lat, lng, radius, sport, fromInstant, toInstant, page, size);
-        long total = sessionRepository.countNearby(lat, lng, radius, sport, fromInstant, toInstant);
+            lat, lng, radius, sport, skillLevel, fromInstant, toInstant, page, size);
+        long total = sessionRepository.countNearby(lat, lng, radius, sport, skillLevel, fromInstant, toInstant);
 
         List<SessionSummaryResponse> content = sessions.stream()
             .map(s -> new SessionSummaryResponse(
@@ -171,7 +175,7 @@ public class SessionController {
                 new LocationResponse(s.lat(), s.lng()),
                 s.startTime().toString(), s.endTime().toString(),
                 s.capacity(), s.participantCount(), s.spotsLeft(), s.status(),
-                s.venueCost(), s.costSplit()
+                s.venueCost(), s.costSplit(), s.skillLevel()
             ))
             .toList();
 
@@ -190,6 +194,7 @@ public class SessionController {
         }
 
         validateVenueCost(request.venueCost(), request.costSplit());
+        validateSkillLevel(request.skillLevel());
 
         Session session = sessionService.createSession(
             hostUserId,
@@ -197,7 +202,7 @@ public class SessionController {
             request.startTime(), request.endTime(), request.capacity(),
             request.offlineCount() != null ? request.offlineCount() : 0,
             request.lat(), request.lng(), request.locationName(),
-            request.venueCost(), request.costSplit()
+            request.venueCost(), request.costSplit(), request.skillLevel()
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(buildDetailResponse(session.id()));
@@ -211,11 +216,12 @@ public class SessionController {
 
         UUID callerId = requireAuth(authHeader);
         validateVenueCost(request.venueCost(), request.costSplit());
+        validateSkillLevel(request.skillLevel());
         sessionService.updateSession(callerId, id,
             request.title(), request.notes(),
             request.startTime(), request.endTime(), request.capacity(), request.offlineCount(),
             request.sport(), request.locationName(), request.lat(), request.lng(),
-            request.venueCost(), request.costSplit());
+            request.venueCost(), request.costSplit(), request.skillLevel());
 
         return ResponseEntity.ok(buildDetailResponse(id));
     }
@@ -328,8 +334,19 @@ public class SessionController {
             new HostResponse(host.id().toString(), host.name()),
             participantResponses,
             session.venueCost(),
-            session.costSplit()
+            session.costSplit(),
+            session.skillLevel()
         );
+    }
+
+    private static final java.util.Set<String> VALID_SKILL_LEVELS =
+        java.util.Set.of("beginner", "intermediate", "advanced");
+
+    private void validateSkillLevel(String skillLevel) {
+        if (skillLevel != null && !VALID_SKILL_LEVELS.contains(skillLevel)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "skillLevel must be 'beginner', 'intermediate', or 'advanced'");
+        }
     }
 
     private void validateVenueCost(BigDecimal venueCost, String costSplit) {

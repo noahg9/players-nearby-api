@@ -39,11 +39,11 @@ public class SessionService {
     public Session createSession(UUID hostUserId, String sport, String title, String notes,
                                  Instant startTime, Instant endTime, int capacity, int offlineCount,
                                  double lat, double lng, String locationName,
-                                 BigDecimal venueCost, String costSplit) {
+                                 BigDecimal venueCost, String costSplit, String skillLevel) {
         UUID sessionId = UUID.randomUUID();
         sessionRepository.save(sessionId, sport, title, notes, startTime, endTime,
                                capacity, offlineCount, hostUserId, lat, lng, locationName,
-                               venueCost, costSplit);
+                               venueCost, costSplit, skillLevel);
         Participant hostParticipant = new Participant(
             UUID.randomUUID(), sessionId, hostUserId, null, null,
             "joined", Instant.now(), null
@@ -56,7 +56,7 @@ public class SessionService {
     public Session updateSession(UUID callerId, UUID sessionId, String title, String notes,
                                  Instant startTime, Instant endTime, Integer capacity, Integer offlineCount,
                                  String sport, String locationName, Double lat, Double lng,
-                                 BigDecimal venueCost, String costSplit) {
+                                 BigDecimal venueCost, String costSplit, String skillLevel) {
         Session session = sessionRepository.findById(sessionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
 
@@ -76,7 +76,7 @@ public class SessionService {
         }
 
         return sessionRepository.update(sessionId, title, notes, startTime, endTime, capacity, offlineCount,
-                                        sport, locationName, lat, lng, venueCost, costSplit);
+                                        sport, locationName, lat, lng, venueCost, costSplit, skillLevel);
     }
 
     @Transactional

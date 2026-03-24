@@ -18,7 +18,8 @@ public record SessionSummary(
     int participantCount,
     String status,
     BigDecimal venueCost,
-    String costSplit
+    String costSplit,
+    String skillLevel
 ) {
     public int spotsLeft() {
         return Math.max(0, capacity - offlineCount - participantCount);

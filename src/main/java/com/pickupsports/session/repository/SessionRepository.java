@@ -36,7 +36,8 @@ public class SessionRepository {
         rs.getDouble("lng"),
         rs.getTimestamp("created_at").toInstant(),
         rs.getBigDecimal("venue_cost"),
-        rs.getString("cost_split")
+        rs.getString("cost_split"),
+        rs.getString("skill_level")
     );
 
     private static final RowMapper<SessionSummary> SUMMARY_MAPPER = (rs, i) -> new SessionSummary(
@@ -53,7 +54,8 @@ public class SessionRepository {
         rs.getInt("participant_count"),
         rs.getString("status"),
         rs.getBigDecimal("venue_cost"),
-        rs.getString("cost_split")
+        rs.getString("cost_split"),
+        rs.getString("skill_level")
     );
 
     public SessionRepository(JdbcTemplate jdbc) {
@@ -63,19 +65,19 @@ public class SessionRepository {
     public Session save(UUID id, String sport, String title, String notes,
                         Instant startTime, Instant endTime, int capacity, int offlineCount,
                         UUID hostUserId, double lat, double lng, String locationName,
-                        BigDecimal venueCost, String costSplit) {
+                        BigDecimal venueCost, String costSplit, String skillLevel) {
         jdbc.update(
             """
             INSERT INTO sessions
                 (id, sport, title, notes, status, start_time, end_time, capacity, offline_count,
-                 host_user_id, location, location_name, venue_cost, cost_split)
-            VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?)
+                 host_user_id, location, location_name, venue_cost, cost_split, skill_level)
+            VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, ?, ?, ?)
             """,
             id, sport, title, notes,
             Timestamp.from(startTime), Timestamp.from(endTime),
             capacity, offlineCount, hostUserId,
             lng, lat,  // ST_MakePoint(lng, lat) — longitude first
-            locationName, venueCost, costSplit
+            locationName, venueCost, costSplit, skillLevel
         );
         return findById(id).orElseThrow();
     }
@@ -83,7 +85,7 @@ public class SessionRepository {
     public Session update(UUID id, String title, String notes,
                           Instant startTime, Instant endTime, Integer capacity, Integer offlineCount,
                           String sport, String locationName, Double lat, Double lng,
-                          BigDecimal venueCost, String costSplit) {
+                          BigDecimal venueCost, String costSplit, String skillLevel) {
         if (lat != null && lng != null) {
             jdbc.update(
                 """
@@ -98,7 +100,8 @@ public class SessionRepository {
                     location_name = COALESCE(?, location_name),
                     location = ST_SetSRID(ST_MakePoint(?, ?), 4326),
                     venue_cost = ?,
-                    cost_split = ?
+                    cost_split = ?,
+                    skill_level = ?
                 WHERE id = ?
                 """,
                 title, notes,
@@ -106,7 +109,7 @@ public class SessionRepository {
                 endTime != null ? Timestamp.from(endTime) : null,
                 capacity, offlineCount, sport, locationName,
                 lng, lat,  // ST_MakePoint(lng, lat) — longitude first
-                venueCost, costSplit,
+                venueCost, costSplit, skillLevel,
                 id
             );
         } else {
@@ -122,14 +125,15 @@ public class SessionRepository {
                     sport = COALESCE(?, sport),
                     location_name = COALESCE(?, location_name),
                     venue_cost = ?,
-                    cost_split = ?
+                    cost_split = ?,
+                    skill_level = ?
                 WHERE id = ?
                 """,
                 title, notes,
                 startTime != null ? Timestamp.from(startTime) : null,
                 endTime != null ? Timestamp.from(endTime) : null,
                 capacity, offlineCount, sport, locationName,
-                venueCost, costSplit,
+                venueCost, costSplit, skillLevel,
                 id
             );
         }
@@ -146,7 +150,7 @@ public class SessionRepository {
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
                    start_time, end_time, capacity, offline_count, host_user_id,
-                   location_name, created_at, venue_cost, cost_split
+                   location_name, created_at, venue_cost, cost_split, skill_level
             FROM sessions
             WHERE id = ?
             """,
@@ -157,13 +161,13 @@ public class SessionRepository {
     }
 
     public List<SessionSummary> findNearby(double lat, double lng, double radiusMeters,
-                                            String sport, Instant from, Instant to,
+                                            String sport, String skillLevel, Instant from, Instant to,
                                             int page, int size) {
         var sql = new StringBuilder("""
             SELECT s.id, s.sport, s.title, s.location_name,
                    ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
                    s.start_time, s.end_time, s.capacity, s.offline_count, s.status,
-                   s.venue_cost, s.cost_split,
+                   s.venue_cost, s.cost_split, s.skill_level,
                    COUNT(sp.id) FILTER (WHERE sp.status = 'joined') AS participant_count
             FROM sessions s
             LEFT JOIN session_participants sp ON sp.session_id = s.id
@@ -180,6 +184,10 @@ public class SessionRepository {
             sql.append("  AND s.sport = ?\n");
             params.add(sport);
         }
+        if (skillLevel != null && !skillLevel.isBlank()) {
+            sql.append("  AND s.skill_level = ?\n");
+            params.add(skillLevel);
+        }
         if (to != null) {
             sql.append("  AND s.start_time <= ?\n");
             params.add(Timestamp.from(to));
@@ -192,7 +200,7 @@ public class SessionRepository {
     }
 
     public long countNearby(double lat, double lng, double radiusMeters,
-                             String sport, Instant from, Instant to) {
+                             String sport, String skillLevel, Instant from, Instant to) {
         var sql = new StringBuilder("""
             SELECT COUNT(*) FROM sessions s
             WHERE s.status = 'active'
@@ -208,6 +216,10 @@ public class SessionRepository {
             sql.append("  AND s.sport = ?\n");
             params.add(sport);
         }
+        if (skillLevel != null && !skillLevel.isBlank()) {
+            sql.append("  AND s.skill_level = ?\n");
+            params.add(skillLevel);
+        }
         if (to != null) {
             sql.append("  AND s.start_time <= ?\n");
             params.add(Timestamp.from(to));
@@ -221,7 +233,7 @@ public class SessionRepository {
             SELECT s.id, s.sport, s.title, s.location_name,
                    ST_Y(s.location) AS lat, ST_X(s.location) AS lng,
                    s.start_time, s.end_time, s.capacity, s.offline_count, s.status,
-                   s.venue_cost, s.cost_split,
+                   s.venue_cost, s.cost_split, s.skill_level,
                    COUNT(sp2.id) FILTER (WHERE sp2.status = 'joined') AS participant_count
             FROM sessions s
             JOIN session_participants my_sp ON my_sp.session_id = s.id
@@ -259,7 +271,7 @@ public class SessionRepository {
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
                    start_time, end_time, capacity, offline_count, host_user_id,
-                   location_name, created_at, venue_cost, cost_split
+                   location_name, created_at, venue_cost, cost_split, skill_level
             FROM sessions
             WHERE host_user_id = ? AND status = 'active'
             """,
@@ -273,7 +285,7 @@ public class SessionRepository {
             SELECT id, sport, title, notes, status, visibility,
                    ST_Y(location) AS lat, ST_X(location) AS lng,
                    start_time, end_time, capacity, offline_count, host_user_id,
-                   location_name, created_at, venue_cost, cost_split
+                   location_name, created_at, venue_cost, cost_split, skill_level
             FROM sessions
             WHERE status = 'active'
               AND start_time >= ?
