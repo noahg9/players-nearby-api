@@ -12,7 +12,9 @@ import com.pickupsports.session.service.SessionService;
 import com.pickupsports.user.domain.User;
 import com.pickupsports.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
+import com.pickupsports.auth.service.EmailService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -39,6 +41,7 @@ public class SessionController {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final RateLimiterService rateLimiterService;
+    private final EmailService emailService;
 
     public SessionController(SessionRepository sessionRepository,
                              ParticipantRepository participantRepository,
@@ -46,7 +49,8 @@ public class SessionController {
                              SessionService sessionService,
                              UserRepository userRepository,
                              JwtService jwtService,
-                             RateLimiterService rateLimiterService) {
+                             RateLimiterService rateLimiterService,
+                             EmailService emailService) {
         this.sessionRepository = sessionRepository;
         this.participantRepository = participantRepository;
         this.participantService = participantService;
@@ -54,6 +58,7 @@ public class SessionController {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.rateLimiterService = rateLimiterService;
+        this.emailService = emailService;
     }
 
     // ── Request / Response records ──────────────────────────────────────────
@@ -93,6 +98,8 @@ public class SessionController {
     record GuestJoinRequest(@NotBlank @Size(min = 1, max = 50) String name) {}
 
     record LeaveRequest(String guestToken) {}
+
+    record InviteRequest(@NotBlank @Email @Size(max = 254) String email) {}
 
     record LocationResponse(double lat, double lng) {}
 
@@ -284,6 +291,28 @@ public class SessionController {
         }
 
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/invite")
+    public ResponseEntity<Void> inviteToSession(
+            @PathVariable UUID id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @Valid @RequestBody InviteRequest request) {
+
+        UUID userId = requireAuth(authHeader);
+
+        if (!rateLimiterService.tryConsumeInvite(userId.toString())) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                "Too many invites. Try again later.");
+        }
+
+        Session session = sessionRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Session not found"));
+
+        emailService.sendInvite(request.email(), session.title(), session.sport(),
+            session.locationName(), session.startTime(), id);
+
+        return ResponseEntity.noContent().build();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

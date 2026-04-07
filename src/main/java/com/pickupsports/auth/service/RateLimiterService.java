@@ -14,6 +14,7 @@ public class RateLimiterService {
     private final ConcurrentHashMap<String, Bucket> emailBuckets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Bucket> guestJoinBuckets = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Bucket> chatBuckets = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Bucket> inviteBuckets = new ConcurrentHashMap<>();
 
     /**
      * Returns true if the request is allowed; false if the rate limit is exceeded.
@@ -38,6 +39,20 @@ public class RateLimiterService {
             ip,
             k -> Bucket.builder()
                 .addLimit(limit -> limit.capacity(20).refillGreedy(20, Duration.ofHours(1)))
+                .build()
+        );
+        return bucket.tryConsume(1);
+    }
+
+    /**
+     * Returns true if the request is allowed; false if rate limit exceeded.
+     * Limit: 10 session invites per user per hour.
+     */
+    public boolean tryConsumeInvite(String userId) {
+        Bucket bucket = inviteBuckets.computeIfAbsent(
+            userId,
+            k -> Bucket.builder()
+                .addLimit(limit -> limit.capacity(10).refillGreedy(10, Duration.ofHours(1)))
                 .build()
         );
         return bucket.tryConsume(1);

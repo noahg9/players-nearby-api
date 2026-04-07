@@ -74,7 +74,7 @@ public class EmailService {
     }
 
     public void sendWaitlistPromotion(String toEmail, String sessionTitle,
-                                      Instant startTime, String locationName) {
+                                      Instant startTime, String locationName, java.util.UUID sessionId) {
         if (!emailEnabled) {
             log.debug("Resend API key not configured — waitlist promotion not sent to {}", toEmail);
             return;
@@ -84,13 +84,14 @@ public class EmailService {
         ctx.setVariable("sessionTitle", sessionTitle);
         ctx.setVariable("locationName", locationName);
         ctx.setVariable("formattedTime", DATE_FORMATTER.format(startTime));
+        ctx.setVariable("sessionUrl", appBaseUrl.stripTrailing() + "/sessions/" + sessionId);
 
         send(toEmail, "You're in! A spot opened for " + sessionTitle, "email/waitlist-promotion", ctx,
             "Failed to send waitlist promotion to {}");
     }
 
     public void sendSessionReminder(String toEmail, String sessionTitle,
-                                    Instant startTime, String locationName) {
+                                    Instant startTime, String locationName, java.util.UUID sessionId) {
         if (!emailEnabled) {
             log.debug("Resend API key not configured — session reminder not sent to {}", toEmail);
             return;
@@ -100,12 +101,14 @@ public class EmailService {
         ctx.setVariable("sessionTitle", sessionTitle);
         ctx.setVariable("locationName", locationName);
         ctx.setVariable("formattedTime", DATE_FORMATTER.format(startTime));
+        ctx.setVariable("sessionUrl", appBaseUrl.stripTrailing() + "/sessions/" + sessionId);
 
         send(toEmail, "Starting in 1 hour: " + sessionTitle, "email/session-reminder", ctx,
             "Failed to send session reminder to {}");
     }
 
-    public void sendHostJoinNotification(String toEmail, String joinerName, String sessionTitle) {
+    public void sendHostJoinNotification(String toEmail, String joinerName, String sessionTitle,
+                                         java.util.UUID sessionId) {
         if (!emailEnabled) {
             log.debug("Resend API key not configured — host join notification not sent to {}", toEmail);
             return;
@@ -114,9 +117,28 @@ public class EmailService {
         Context ctx = baseContext();
         ctx.setVariable("joinerName", joinerName);
         ctx.setVariable("sessionTitle", sessionTitle);
+        ctx.setVariable("sessionUrl", appBaseUrl.stripTrailing() + "/sessions/" + sessionId);
 
         send(toEmail, joinerName + " joined your session", "email/host-join", ctx,
             "Failed to send host join notification to {}");
+    }
+
+    public void sendInvite(String toEmail, String sessionTitle, String sport,
+                           String locationName, Instant startTime, java.util.UUID sessionId) {
+        if (!emailEnabled) {
+            log.debug("Resend API key not configured — invite not sent to {}", toEmail);
+            return;
+        }
+
+        Context ctx = baseContext();
+        ctx.setVariable("sessionTitle", sessionTitle);
+        ctx.setVariable("sport", sport);
+        ctx.setVariable("locationName", locationName);
+        ctx.setVariable("formattedTime", DATE_FORMATTER.format(startTime));
+        ctx.setVariable("sessionUrl", appBaseUrl.stripTrailing() + "/sessions/" + sessionId);
+
+        send(toEmail, "You're invited to a " + sport + " session", "email/invite", ctx,
+            "Failed to send invite to {}");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

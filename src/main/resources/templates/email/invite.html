@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html th:replace="~{email/_layout :: emailLayout('You\'re off the waitlist', ~{::section})}"
+<html th:replace="~{email/_layout :: emailLayout('You\'re invited', ~{::section})}"
       xmlns:th="http://www.thymeleaf.org" lang="en">
 <body>
 <section>
-  <p style="margin:0 0 16px">Good news &mdash; a spot opened up and you've been moved off the waitlist:</p>
+  <p style="margin:0 0 16px">You've been invited to a pickup <strong th:text="${sport}">sport</strong> session:</p>
   <table cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin:0 0 20px;width:100%;">
     <tr><td style="font-weight:700;font-size:16px;color:#111827;padding-bottom:6px;" th:text="${sessionTitle}">Session title</td></tr>
     <tr><td style="color:#6b7280;font-size:14px;">&#128205; <span th:text="${locationName}">Location</span></td></tr>
@@ -13,6 +13,9 @@
      style="display:inline-block;padding:12px 24px;background:#16a34a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px">
     View session
   </a>
+  <p style="margin:24px 0 0;color:#6b7280;font-size:13px">
+    No account needed &mdash; you can join as a guest.
+  </p>
 </section>
 </body>
 </html>

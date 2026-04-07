@@ -3,10 +3,14 @@
       xmlns:th="http://www.thymeleaf.org" lang="en">
 <body>
 <section>
-  <p style="margin:0">
+  <p style="margin:0 0 16px">
     <strong th:text="${joinerName}">Someone</strong> has joined your session
     <strong th:text="${sessionTitle}">Session title</strong>.
   </p>
+  <a th:href="${sessionUrl}"
+     style="display:inline-block;padding:12px 24px;background:#16a34a;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px">
+    View session
+  </a>
 </section>
 </body>
 </html>

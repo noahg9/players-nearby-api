@@ -138,7 +138,7 @@ public class ParticipantService {
             if (promoted.userId() != null) {
                 userRepository.findById(promoted.userId()).ifPresent(user ->
                     emailService.sendWaitlistPromotion(
-                        user.email(), session.title(), session.startTime(), session.locationName())
+                        user.email(), session.title(), session.startTime(), session.locationName(), sessionId)
                 );
             }
         });
@@ -146,7 +146,7 @@ public class ParticipantService {
 
     private void notifyHostOfJoin(Session session, String joinerName) {
         userRepository.findById(session.hostUserId()).ifPresent(host ->
-            emailService.sendHostJoinNotification(host.email(), joinerName, session.title())
+            emailService.sendHostJoinNotification(host.email(), joinerName, session.title(), session.id())
         );
     }
 

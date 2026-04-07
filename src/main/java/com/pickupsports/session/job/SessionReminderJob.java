@@ -47,7 +47,7 @@ public class SessionReminderJob {
                 List<String> emails = participantRepository.findJoinedParticipantEmails(session.id());
                 for (String email : emails) {
                     emailService.sendSessionReminder(
-                        email, session.title(), session.startTime(), session.locationName());
+                        email, session.title(), session.startTime(), session.locationName(), session.id());
                 }
             }
         } catch (Exception e) {
